@@ -15,9 +15,9 @@ echo "Running as root."
 cwd=$(pwd)  # store working directory to cleanly return to it later
 
 # update-apt.sh must be in the same directory
-if [[ -e update-apt.sh ]]; then
+if [[ -e ./update-apt.sh ]]; then
     echo "Running update-apt.sh"
-    chmod +x ./update.sh
+    chmod +x ./update-apt.sh
     update-apt.sh  # ./ ???????
 else
     echo "Could not find update-apt.sh. Exiting."
@@ -25,6 +25,8 @@ else
 fi
 
 # Install more apt packages
+read -p "Press any key to continue."
+echo "Installing apt packages..."
 # VirtualBox guest additions are auto-installed?
 apt install kali-linux-everything  # https://tools.kali.org/kali-metapackages
 
@@ -38,6 +40,7 @@ apt install libimage-exiftool-perl  # ExifTool https://github.com/exiftool/exift
 apt install ghex  # Hex editor for GNOME https://wiki.gnome.org/Apps/Ghex
 
 # Install special software
+read -p "Press any key to continue."  # TODO remove
 
 # Snap (for VSCode)
 echo "Installing and enabling snap..."
@@ -59,6 +62,8 @@ if [[ -e ~/.bash_profile ]]; then
     echo 'export PATH=$PATH:/snap/bin' >> ~/.bash_profile
 fi
 
+read -p "Press any key to continue."  # TODO remove
+
 # Visual Studio Code / VSCode
 # https://snapcraft.io/docs/installing-snap-on-kali
 echo "Installing VSCode..."
@@ -76,6 +81,7 @@ snap install --classic code
 # sudo 
 # sudo 
 
+read -p "Press any key to continue."  # TODO remove
 
 # Download git repos
 
@@ -90,10 +96,13 @@ pip install -r requirements.txt
 # SageMath package was removed from kali apt...
 deactivate  # exit virtual environment
 
+read -p "Press any key to continue."  # TODO remove
 
 # config anything else
 echo 'alias ll="ls -lahF"' >> ~/.bash_aliases
 echo 'alias tt="tree -lahfs"' >> ~/.bash_aliases
+
+read -p "Press any key to continue."  # TODO remove
 
 # Unpack RockYou.txt wordlist
 gunzip /usr/share/wordlists/rockyou.txt.gz
@@ -101,6 +110,10 @@ gunzip /usr/share/wordlists/rockyou.txt.gz
 # Firefox Addons
 
 # sshd
+
+# Powerline for Bash, tmux
+
+read -p "Press any key to continue."  # TODO remove
 
 # Cleanup
 cd $cwd
