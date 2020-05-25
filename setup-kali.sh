@@ -4,6 +4,12 @@
 # Tested 2020-05-25 with Kali 2020.2 installer, x64, in VirtualBox.
 
 # $ git clone https://github.com/benhunter/scripts
+# $ chmod +x ./scripts/setup-kali.sh; ./scripts/setup-kali.sh
+
+# Update repo in place
+# https://stackoverflow.com/questions/1125968/how-do-i-force-git-pull-to-overwrite-local-files
+# git reset --hard HEAD; git pull
+
 
 # Prompt for sudo if not root.
 if [[ $EUID != 0 ]]; then
@@ -21,7 +27,7 @@ CWD=$(pwd)  # store working directory to cleanly return to it later
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # update-apt.sh must be in the same directory
-if [[ -e ./update-apt.sh ]]; then
+if [[ -e $DIR/update-apt.sh ]]; then
     echo "Running update-apt.sh"
     chmod +x ./update-apt.sh
     $DIR/update-apt.sh
