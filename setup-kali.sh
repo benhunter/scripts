@@ -29,7 +29,8 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 # update-apt.sh must be in the same directory
 if [[ -e $DIR/update-apt.sh ]]; then
     echo "Running update-apt.sh"
-    chmod +x ./update-apt.sh
+    echo $DIR
+    chmod +x $DIR/update-apt.sh
     $DIR/update-apt.sh
 else
     echo "Could not find update-apt.sh. Exiting."
