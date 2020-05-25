@@ -25,11 +25,12 @@ CWD=$(pwd)  # store working directory to cleanly return to it later
 # Get path to script that is running.
 # https://stackoverflow.com/questions/59895/how-to-get-the-source-directory-of-a-bash-script-from-within-the-script-itself
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+echo '$DIR' $DIR
+echo '~' ~
 
 # update-apt.sh must be in the same directory
 if [[ -e $DIR/update-apt.sh ]]; then
     echo "Running update-apt.sh"
-    echo $DIR
     chmod +x $DIR/update-apt.sh
     $DIR/update-apt.sh
 else
