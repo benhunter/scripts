@@ -47,8 +47,7 @@ echo "Installing apt packages..."
 apt -y install kali-linux-everything  # https://tools.kali.org/kali-metapackages
 
 # Python pip3, pip for virtual environments
-apt -y install python3-venv
-apt -y install python-pip
+apt -y install python3-venv python-pip
 
 apt -y install htop
 apt -y install ssss  # ssss - Shamir's secret sharing scheme
@@ -75,7 +74,7 @@ systemctl enable --now snapd apparmor
 # https://github.com/thoughtbot/til/blob/master/bash/bash_profile_vs_bashrc.md
 # if [[ -e ~/.bash_profile ]]; then
 echo "Updating ~/.bash_profile..."
-echo 'export PATH=$PATH:/snap/bin' >> ~/.bash_profile
+echo 'export PATH=$PATH:/snap/bin' >> $HOME_DIR/.bash_profile
 # fi
 
 # read -p "Press Enter key to continue."  # TODO remove
@@ -114,7 +113,7 @@ if [[ -d ./RsaCtfTool ]]; then
     cd ./RsaCtfTool
     python3 -m venv --system-site-packages venv
     source ./venv/bin/activate
-    sudo apt install libmpc-dev  # and libmpfr-dev ?
+    sudo apt -y install libmpc-dev  # and libmpfr-dev ?
     pip install -r requirements.txt 
     # SageMath package was removed from kali apt...
     deactivate  # exit virtual environment
@@ -128,8 +127,9 @@ fi
 # read -p "Press Enter key to continue."  # TODO remove
 
 # config anything else
-echo 'alias ll="ls -lahF"' >> ~/.bash_aliases
-echo 'alias tt="tree -lahfs"' >> ~/.bash_aliases
+echo 'alias ll="ls -lahF"' >> $HOME_DIR/.bash_aliases
+echo 'alias tt="tree -lahfs"' >> $HOME_DIR/.bash_aliases
+# chown kali .bash_aliases
 
 # read -p "Press Enter key to continue."  # TODO remove
 
