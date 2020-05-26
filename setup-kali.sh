@@ -46,16 +46,17 @@ echo "Installing apt packages..."
 # VirtualBox guest additions are auto-installed?
 apt -y install kali-linux-everything  # https://tools.kali.org/kali-metapackages
 
+# More packages.
+# Htop, tree, gobuster
 # Python pip3, pip for virtual environments
-apt -y install python3-venv python-pip
+# ssss - Shamir's secret sharing scheme
+# ExifTool https://github.com/exiftool/exiftool
+# Hex editor for GNOME https://wiki.gnome.org/Apps/Ghex
+apt -y install htop tree gobuster python3-venv python-pip ssss libimage-exiftool-perl ghex
 
-apt -y install htop
-apt -y install ssss  # ssss - Shamir's secret sharing scheme
-apt -y install libimage-exiftool-perl  # ExifTool https://github.com/exiftool/exiftool
-apt -y install ghex  # Hex editor for GNOME https://wiki.gnome.org/Apps/Ghex
 
 # Install special software
-# read -p "Press Enter key to continue."  # TODO remove
+read -p "Press Enter key to continue."  # TODO remove
 
 # Snap (for VSCode)
 echo "Installing and enabling snap..."
@@ -75,9 +76,10 @@ systemctl enable --now snapd apparmor
 # if [[ -e ~/.bash_profile ]]; then
 echo "Updating ~/.bash_profile..."
 echo 'export PATH=$PATH:/snap/bin' >> $HOME_DIR/.bash_profile
+# chown kali .bash_aliases
 # fi
 
-# read -p "Press Enter key to continue."  # TODO remove
+read -p "Press Enter key to continue."  # TODO remove
 
 # Visual Studio Code / VSCode
 # https://snapcraft.io/docs/installing-snap-on-kali
@@ -96,7 +98,7 @@ snap install --classic code
 # sudo 
 # sudo 
 
-# read -p "Press Enter key to continue."  # TODO remove
+read -p "Press Enter key to continue."  # TODO remove
 
 # Ghidra
 
@@ -124,14 +126,14 @@ else
 fi
 
 
-# read -p "Press Enter key to continue."  # TODO remove
+read -p "Press Enter key to continue."  # TODO remove
 
 # config anything else
 echo 'alias ll="ls -lahF"' >> $HOME_DIR/.bash_aliases
 echo 'alias tt="tree -lahfs"' >> $HOME_DIR/.bash_aliases
 # chown kali .bash_aliases
 
-# read -p "Press Enter key to continue."  # TODO remove
+read -p "Press Enter key to continue."  # TODO remove
 
 # Unpack RockYou.txt wordlist
 gunzip /usr/share/wordlists/rockyou.txt.gz
