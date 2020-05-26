@@ -41,7 +41,7 @@ else
 fi
 
 # Install more apt packages
-read -p "Press Enter key to continue."
+# read -p "Press Enter key to continue."
 echo "Installing apt packages..."
 # VirtualBox guest additions are auto-installed?
 apt -y install kali-linux-everything  # https://tools.kali.org/kali-metapackages
@@ -56,7 +56,7 @@ apt -y install libimage-exiftool-perl  # ExifTool https://github.com/exiftool/ex
 apt -y install ghex  # Hex editor for GNOME https://wiki.gnome.org/Apps/Ghex
 
 # Install special software
-read -p "Press Enter key to continue."  # TODO remove
+# read -p "Press Enter key to continue."  # TODO remove
 
 # Snap (for VSCode)
 echo "Installing and enabling snap..."
@@ -78,7 +78,7 @@ echo "Updating ~/.bash_profile..."
 echo 'export PATH=$PATH:/snap/bin' >> ~/.bash_profile
 # fi
 
-read -p "Press Enter key to continue."  # TODO remove
+# read -p "Press Enter key to continue."  # TODO remove
 
 # Visual Studio Code / VSCode
 # https://snapcraft.io/docs/installing-snap-on-kali
@@ -97,7 +97,7 @@ snap install --classic code
 # sudo 
 # sudo 
 
-read -p "Press Enter key to continue."  # TODO remove
+# read -p "Press Enter key to continue."  # TODO remove
 
 # Ghidra
 
@@ -114,7 +114,7 @@ if [[ -d ./RsaCtfTool ]]; then
     cd ./RsaCtfTool
     python3 -m venv --system-site-packages venv
     source ./venv/bin/activate
-    sudo apt install libmpfr-dev
+    sudo apt install libmpc-dev  # and libmpfr-dev ?
     pip install -r requirements.txt 
     # SageMath package was removed from kali apt...
     deactivate  # exit virtual environment
@@ -125,13 +125,13 @@ else
 fi
 
 
-read -p "Press Enter key to continue."  # TODO remove
+# read -p "Press Enter key to continue."  # TODO remove
 
 # config anything else
 echo 'alias ll="ls -lahF"' >> ~/.bash_aliases
 echo 'alias tt="tree -lahfs"' >> ~/.bash_aliases
 
-read -p "Press Enter key to continue."  # TODO remove
+# read -p "Press Enter key to continue."  # TODO remove
 
 # Unpack RockYou.txt wordlist
 gunzip /usr/share/wordlists/rockyou.txt.gz
@@ -142,7 +142,7 @@ gunzip /usr/share/wordlists/rockyou.txt.gz
 
 # Powerline for Bash, tmux
 
-read -p "Press Enter key to continue."  # TODO remove
+# read -p "Press Enter key to continue."  # TODO remove
 
 # Cleanup
 cd $CWD  # Go back to the directory where the script started.
