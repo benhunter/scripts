@@ -21,18 +21,20 @@ fi
 echo "Running as root."
 
 CWD=$(pwd)  # store working directory to cleanly return to it later
+HOME_DIR=$(eval echo ~`logname`)  # Home directory of the user running the script.
+echo '$HOME_DIR' $HOME_DIR
 
 # Get path to script that is running.
 # https://stackoverflow.com/questions/59895/how-to-get-the-source-directory-of-a-bash-script-from-within-the-script-itself
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-echo '$DIR' $DIR
-echo '~' ~
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+echo '$SCRIPT_DIR' $SCRIPT_DIR
+# echo '~' ~
 
 # update-apt.sh must be in the same directory
-if [[ -e $DIR/update-apt.sh ]]; then
+if [[ -e $SCRIPT_DIR/update-apt.sh ]]; then
     echo "Running update-apt.sh"
-    chmod +x $DIR/update-apt.sh
-    $DIR/update-apt.sh
+    chmod +x $SCRIPT_DIR/update-apt.sh
+    $SCRIPT_DIR/update-apt.sh
 else
     echo "Could not find update-apt.sh. Exiting."
     exit 
@@ -105,17 +107,23 @@ read -p "Press Enter key to continue."  # TODO remove
 # Impacket
 
 # RSA CTF Tool
-mkdir ~/GitHub
-cd ~/GitHub
+mkdir $HOME_DIR/GitHub
+cd $HOME_DIR/GitHub
 git clone https://github.com/Ganapati/RsaCtfTool
-cd ~/GitHub/RsaCtfTool
-python3 -m venv --system-site-packages venv
-source ./venv/bin/activate
-sudo apt install libmpfr-dev
-pip install -r requirements.txt 
-# SageMath package was removed from kali apt...
-deactivate  # exit virtual environment
-cd ~
+if [[ -d ./RsaCtfTool ]]; then
+    cd ./RsaCtfTool
+    python3 -m venv --system-site-packages venv
+    source ./venv/bin/activate
+    sudo apt install libmpfr-dev
+    pip install -r requirements.txt 
+    # SageMath package was removed from kali apt...
+    deactivate  # exit virtual environment
+    cd $HOME_DIR
+else
+    echo "FAILED: git clone https://github.com/Ganapati/RsaCtfTool"
+    exit
+fi
+
 
 read -p "Press Enter key to continue."  # TODO remove
 
@@ -137,5 +145,5 @@ gunzip /usr/share/wordlists/rockyou.txt.gz
 read -p "Press Enter key to continue."  # TODO remove
 
 # Cleanup
-cd $CWD
+cd $CWD  # Go back to the directory where the script started.
 echo "Please reboot (snapshot if needed)..."
