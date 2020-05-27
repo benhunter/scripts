@@ -21,6 +21,16 @@ fi
 echo "Running as root."
 
 CWD=$(pwd)  # store working directory to cleanly return to it later
+echo $USER
+
+read -p "Press Enter key to continue."  # TODO remove
+read -p "Press Enter key to continue."  # TODO remove
+read -p "Press Enter key to continue."  # TODO remove
+read -p "Press Enter key to continue."  # TODO remove
+read -p "Press Enter key to continue."  # TODO remove
+read -p "Press Enter key to continue."  # TODO remove
+
+
 HOME_DIR=$(eval echo ~`logname`)  # Home directory of the user running the script.
 echo '$HOME_DIR' $HOME_DIR
 
@@ -76,12 +86,13 @@ systemctl enable --now snapd apparmor
 # if [[ -e ~/.bash_profile ]]; then
 echo "Updating ~/.bash_profile..."
 echo 'export PATH=$PATH:/snap/bin' >> $HOME_DIR/.bash_profile
-# chown kali .bash_aliases
+chown $USER:$USER $HOME_DIR/.bash_profile
 # fi
 
 read -p "Press Enter key to continue."  # TODO remove
 
 # Visual Studio Code / VSCode
+# TODO check out VSCodium https://vscodium.com/
 # https://snapcraft.io/docs/installing-snap-on-kali
 echo "Installing VSCode..."
 snap install --classic code
@@ -111,7 +122,9 @@ cd $HOME_DIR/Downloads
 GHIDRA_VERSION=9.1.2
 GHIDRA_ZIP=ghidra_9.1.2_PUBLIC_20200212.zip
 wget "https://ghidra-sre.org/$GHIDRA_ZIP"
+chown $USER:$USER $GHIDRA_ZIP
 unzip $GHIDRA_ZIP
+chown -R $USER:$USER ghidra_"$GHIDRA_VERSION"_PUBLIC
 mv ghidra_"$GHIDRA_VERSION"_PUBLIC /opt/
 cd $HOME_DIR
 
@@ -131,6 +144,9 @@ if [[ -d ./RsaCtfTool ]]; then
     pip install -r requirements.txt 
     # SageMath package was removed from kali apt...
     deactivate  # exit virtual environment
+
+    chown -R $USER:$USER $HOME_DIR/GitHub
+
     cd $HOME_DIR
 else
     echo "FAILED: git clone https://github.com/Ganapati/RsaCtfTool"
@@ -151,12 +167,13 @@ read -p "Press Enter key to continue."  # TODO remove
 # config anything else
 echo 'alias ll="ls -lahF"' >> $HOME_DIR/.bash_aliases
 echo 'alias tt="tree -lahfs"' >> $HOME_DIR/.bash_aliases
-# chown kali .bash_aliases
+chown $USER:$USER $HOME_DIR/.bash_aliases
 
 read -p "Press Enter key to continue."  # TODO remove
 
 # Unpack RockYou.txt wordlist
 gunzip /usr/share/wordlists/rockyou.txt.gz
+# TODO check owner of rockyou
 
 # Firefox Addons
 
