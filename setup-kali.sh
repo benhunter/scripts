@@ -21,7 +21,7 @@ fi
 echo "Running as root."
 
 CWD=$(pwd)  # store working directory to cleanly return to it later
-echo $USER
+echo $SUDO_USER
 
 read -p "Press Enter key to continue."  # TODO remove
 read -p "Press Enter key to continue."  # TODO remove
