@@ -55,7 +55,7 @@ apt -y install kali-linux-everything  # https://tools.kali.org/kali-metapackages
 # ssss - Shamir's secret sharing scheme
 # ExifTool https://github.com/exiftool/exiftool
 # Hex editor for GNOME https://wiki.gnome.org/Apps/Ghex
-apt -y install htop tree gobuster python3-venv python-pip ssss libimage-exiftool-perl ghex jq powerline fonts-powerline
+apt -y install htop tree gobuster python3-venv python-pip ssss libimage-exiftool-perl ghex jq powerline fonts-powerline joplin
 
 # Install special software
 
