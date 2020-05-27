@@ -10,6 +10,9 @@
 # https://stackoverflow.com/questions/1125968/how-do-i-force-git-pull-to-overwrite-local-files
 # git reset --hard HEAD; git pull
 
+# Pause for debugging if needed:
+# read -p "Press Enter key to continue."  # TODO remove
+
 
 # Prompt for sudo if not root.
 if [[ $EUID != 0 ]]; then
@@ -21,16 +24,7 @@ fi
 echo "Running as root."
 
 CWD=$(pwd)  # store working directory to cleanly return to it later
-echo $SUDO_USER
-
-read -p "Press Enter key to continue."  # TODO remove
-read -p "Press Enter key to continue."  # TODO remove
-read -p "Press Enter key to continue."  # TODO remove
-read -p "Press Enter key to continue."  # TODO remove
-read -p "Press Enter key to continue."  # TODO remove
-read -p "Press Enter key to continue."  # TODO remove
-
-
+echo '$SUDO_USER' $SUDO_USER
 HOME_DIR=$(eval echo ~`logname`)  # Home directory of the user running the script.
 echo '$HOME_DIR' $HOME_DIR
 
@@ -51,7 +45,6 @@ else
 fi
 
 # Install more apt packages
-# read -p "Press Enter key to continue."
 echo "Installing apt packages..."
 # VirtualBox guest additions are auto-installed?
 apt -y install kali-linux-everything  # https://tools.kali.org/kali-metapackages
@@ -64,9 +57,7 @@ apt -y install kali-linux-everything  # https://tools.kali.org/kali-metapackages
 # Hex editor for GNOME https://wiki.gnome.org/Apps/Ghex
 apt -y install htop tree gobuster python3-venv python-pip ssss libimage-exiftool-perl ghex jq powerline fonts-powerline
 
-
 # Install special software
-read -p "Press Enter key to continue."  # TODO remove
 
 # Snap (for VSCode)
 echo "Installing and enabling snap..."
@@ -89,8 +80,6 @@ echo 'export PATH=$PATH:/snap/bin' >> $HOME_DIR/.bash_profile
 chown $SUDO_USER:$SUDO_USER $HOME_DIR/.bash_profile
 # fi
 
-read -p "Press Enter key to continue."  # TODO remove
-
 # Visual Studio Code / VSCode
 # TODO check out VSCodium https://vscodium.com/
 # https://snapcraft.io/docs/installing-snap-on-kali
@@ -105,11 +94,6 @@ snap install --classic code
 # Install Zsteg
 # https://0xrick.github.io/lists/stego/
 # sudo gem install zsteg
-
-# sudo 
-# sudo 
-
-read -p "Press Enter key to continue."  # TODO remove
 
 # Ghidra
 cd $HOME_DIR/Downloads
@@ -127,8 +111,6 @@ unzip $GHIDRA_ZIP
 chown -R $SUDO_USER:$SUDO_USER ghidra_"$GHIDRA_VERSION"_PUBLIC
 mv ghidra_"$GHIDRA_VERSION"_PUBLIC /opt/
 cd $HOME_DIR
-
-read -p "Press Enter key to continue."  # TODO remove
 
 # Download git repos
 
@@ -162,14 +144,10 @@ pip3 install pwntools
 #   Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script
 # -location.
 
-read -p "Press Enter key to continue."  # TODO remove
-
 # config anything else
 echo 'alias ll="ls -lahF"' >> $HOME_DIR/.bash_aliases
 echo 'alias tt="tree -lahfs"' >> $HOME_DIR/.bash_aliases
 chown $SUDO_USER:$SUDO_USER $HOME_DIR/.bash_aliases
-
-read -p "Press Enter key to continue."  # TODO remove
 
 # Unpack RockYou.txt wordlist
 gunzip /usr/share/wordlists/rockyou.txt.gz
@@ -198,9 +176,6 @@ chown $SUDO_USER:$SUDO_USER $HOME_DIR/.tmux.conf
 echo >> $HOME_DIR/.bash_profile
 echo '. ~/.bashrc' >> $HOME_DIR/.bash_profile
 echo >> $HOME_DIR/.bash_profile
-
-
-# read -p "Press Enter key to continue."  # TODO remove
 
 # Cleanup
 cd $CWD  # Go back to the directory where the script started.
