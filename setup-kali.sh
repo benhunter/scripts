@@ -52,7 +52,7 @@ apt -y install kali-linux-everything  # https://tools.kali.org/kali-metapackages
 # ssss - Shamir's secret sharing scheme
 # ExifTool https://github.com/exiftool/exiftool
 # Hex editor for GNOME https://wiki.gnome.org/Apps/Ghex
-apt -y install htop tree gobuster python3-venv python-pip ssss libimage-exiftool-perl ghex
+apt -y install htop tree gobuster python3-venv python-pip ssss libimage-exiftool-perl ghex jq
 
 
 # Install special software
@@ -101,11 +101,23 @@ snap install --classic code
 read -p "Press Enter key to continue."  # TODO remove
 
 # Ghidra
+cd $HOME_DIR/Downloads
+# curl -s https://api.github.com/repos/NationalSecurityAgency/ghidra/tags | grep -m1 zip | cut -d '"' -f 4 | wget -qi -
+# GHIDRA_GITHUB=`curl -s https://api.github.com/repos/NationalSecurityAgency/ghidra/tags`
+# GHIDRA_ZIP=`echo $GHIDRA_GITHUB | jq '.[0].name'`
+# GHIDRA_ZIP_URL=`echo $GHIDRA_GITHUB | jq '.[0].zipball_url'`
+# wget $GHIDRA_ZIP_URL
+
+GHIDRA_VERSION=9.1.2
+GHIDRA_ZIP=ghidra_9.1.2_PUBLIC_20200212.zip
+wget "https://ghidra-sre.org/$GHIDRA_ZIP"
+unzip $GHIDRA_ZIP
+mv ghidra_"$GHIDRA_VERSION"_PUBLIC /opt/
+cd $HOME_DIR
+
+read -p "Press Enter key to continue."  # TODO remove
 
 # Download git repos
-
-# pwntools
-# Impacket
 
 # RSA CTF Tool
 mkdir $HOME_DIR/GitHub
@@ -125,6 +137,14 @@ else
     exit
 fi
 
+# Install Python Packages
+pip3 install pwntools
+# Output:
+#   WARNING: The scripts asm, checksec, common, constgrep, cyclic, debug, disablenx, disasm, elfdiff, elfpa
+# tch, errno, hex, main, phd, pwn, pwnstrip, scramble, shellcraft, template, unhex and update are installed
+#  in '/home/kali/.local/bin' which is not on PATH.                                                        
+#   Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script
+# -location.
 
 read -p "Press Enter key to continue."  # TODO remove
 
