@@ -86,7 +86,7 @@ systemctl enable --now snapd apparmor
 # if [[ -e ~/.bash_profile ]]; then
 echo "Updating ~/.bash_profile..."
 echo 'export PATH=$PATH:/snap/bin' >> $HOME_DIR/.bash_profile
-chown $USER:$USER $HOME_DIR/.bash_profile
+chown $SUDO_USER:$SUDO_USER $HOME_DIR/.bash_profile
 # fi
 
 read -p "Press Enter key to continue."  # TODO remove
@@ -122,9 +122,9 @@ cd $HOME_DIR/Downloads
 GHIDRA_VERSION=9.1.2
 GHIDRA_ZIP=ghidra_9.1.2_PUBLIC_20200212.zip
 wget "https://ghidra-sre.org/$GHIDRA_ZIP"
-chown $USER:$USER $GHIDRA_ZIP
+chown $SUDO_USER:$SUDO_USER $GHIDRA_ZIP
 unzip $GHIDRA_ZIP
-chown -R $USER:$USER ghidra_"$GHIDRA_VERSION"_PUBLIC
+chown -R $SUDO_USER:$SUDO_USER ghidra_"$GHIDRA_VERSION"_PUBLIC
 mv ghidra_"$GHIDRA_VERSION"_PUBLIC /opt/
 cd $HOME_DIR
 
@@ -145,7 +145,7 @@ if [[ -d ./RsaCtfTool ]]; then
     # SageMath package was removed from kali apt...
     deactivate  # exit virtual environment
 
-    chown -R $USER:$USER $HOME_DIR/GitHub
+    chown -R $SUDO_USER:$SUDO_USER $HOME_DIR/GitHub
 
     cd $HOME_DIR
 else
@@ -167,7 +167,7 @@ read -p "Press Enter key to continue."  # TODO remove
 # config anything else
 echo 'alias ll="ls -lahF"' >> $HOME_DIR/.bash_aliases
 echo 'alias tt="tree -lahfs"' >> $HOME_DIR/.bash_aliases
-chown $USER:$USER $HOME_DIR/.bash_aliases
+chown $SUDO_USER:$SUDO_USER $HOME_DIR/.bash_aliases
 
 read -p "Press Enter key to continue."  # TODO remove
 
@@ -194,7 +194,7 @@ echo >> $HOME_DIR/.bashrc
 # Powerline for tmux
 echo 'source "/usr/share/powerline/bindings/tmux/powerline.conf"' >> $HOME_DIR/.tmux.conf
 echo >> $HOME_DIR/.tmux.conf
-chown $USER:$USER $HOME_DIR/.tmux.conf
+chown $SUDO_USER:$SUDO_USER $HOME_DIR/.tmux.conf
 echo >> $HOME_DIR/.bash_profile
 echo '. ~/.bashrc' >> $HOME_DIR/.bash_profile
 echo >> $HOME_DIR/.bash_profile
