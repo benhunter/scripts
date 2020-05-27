@@ -62,7 +62,7 @@ apt -y install kali-linux-everything  # https://tools.kali.org/kali-metapackages
 # ssss - Shamir's secret sharing scheme
 # ExifTool https://github.com/exiftool/exiftool
 # Hex editor for GNOME https://wiki.gnome.org/Apps/Ghex
-apt -y install htop tree gobuster python3-venv python-pip ssss libimage-exiftool-perl ghex jq
+apt -y install htop tree gobuster python3-venv python-pip ssss libimage-exiftool-perl ghex jq powerline fonts-powerline
 
 
 # Install special software
@@ -179,7 +179,26 @@ gunzip /usr/share/wordlists/rockyou.txt.gz
 
 # sshd
 
-# Powerline for Bash, tmux
+# Powerline for Bash
+echo >> $HOME_DIR/.bashrc
+echo '# Powerline' >> $HOME_DIR/.bashrc
+echo '# config goes in ~/.confg/powerline/config.json' >> $HOME_DIR/.bashrc
+echo 'if [ -f `which powerline-daemon` ]; then' >> $HOME_DIR/.bashrc
+echo '  powerline-daemon -q' >> $HOME_DIR/.bashrc
+echo '  POWERLINE_BASH_CONTINUATION=1' >> $HOME_DIR/.bashrc
+echo '  POWERLINE_BASH_SELECT=1' >> $HOME_DIR/.bashrc
+echo '  . /usr/share/powerline/bindings/bash/powerline.sh' >> $HOME_DIR/.bashrc
+echo 'fi' >> $HOME_DIR/.bashrc
+echo >> $HOME_DIR/.bashrc
+
+# Powerline for tmux
+echo 'source "/usr/share/powerline/bindings/tmux/powerline.conf"' >> $HOME_DIR/.tmux.conf
+echo >> $HOME_DIR/.tmux.conf
+chown $USER:$USER $HOME_DIR/.tmux.conf
+echo >> $HOME_DIR/.bash_profile
+echo '. ~/.bashrc' >> $HOME_DIR/.bash_profile
+echo >> $HOME_DIR/.bash_profile
+
 
 # read -p "Press Enter key to continue."  # TODO remove
 
