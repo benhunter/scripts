@@ -3,8 +3,7 @@
 # Setup Kali from installation
 # Tested 2020-05-25 with Kali 2020.2 installer, x64, in VirtualBox.
 
-# $ git clone https://github.com/benhunter/scripts
-# $ chmod +x ./scripts/setup-kali.sh; ./scripts/setup-kali.sh
+# $ git clone https://github.com/benhunter/scripts; chmod +x ./scripts/setup-kali.sh; ./scripts/setup-kali.sh
 
 # Update repo in place
 # https://stackoverflow.com/questions/1125968/how-do-i-force-git-pull-to-overwrite-local-files
