@@ -157,6 +157,7 @@ gunzip /usr/share/wordlists/rockyou.txt.gz
 # sshd
 
 # Powerline for Bash
+# apt -y install powerline fonts-powerline  # already executed
 echo >> $HOME_DIR/.bashrc
 echo '# Powerline' >> $HOME_DIR/.bashrc
 echo '# config goes in ~/.confg/powerline/config.json' >> $HOME_DIR/.bashrc
