@@ -2,10 +2,9 @@
 
 # Define a function to delete node_modules directories
 function delete_node_modules {
-    shopt -s dotglob
     for file in "$1"/*; do
         if [ -d "$file" ]; then
-            if [ "$(basename "$file")" = ".gradle" ]; then
+            if [ "$(basename "$file")" = "postgres-data" ]; then
                 echo "Deleting $file"
                 rm -rf "$file"
             else
@@ -13,7 +12,6 @@ function delete_node_modules {
             fi
         fi
     done
-    shopt -u dotglob
 }
 
 
