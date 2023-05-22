@@ -4,7 +4,7 @@ if [ $# -lt 1 ]
 then
 cat << HELP
 
-dockertags  --  list all tags for a Docker image on a remote registry.
+docker-list-tags-remote  --  list all tags for a Docker image on a remote registry.
 
 EXAMPLE: 
     - list all tags for ubuntu:
