@@ -20,7 +20,7 @@ pull_git_repos() {
   for item in "$dir"/*; do
     if [[ -d "$item" ]]; then
       if [[ -d "$item/.git" ]]; then
-        echo "Pulling the Git repository in $item"
+        echo -n "Pulling the Git repository in $item. "
         (cd "$item" && git pull)
         echo
       else
