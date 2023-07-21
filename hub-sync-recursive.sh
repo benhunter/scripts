@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./git-pull-recursive.sh /path/to/directory
+# Usage: ./hub-sync-recursive.sh /path/to/directory
 
 search_directory="$1"
 
@@ -20,10 +20,9 @@ pull_git_repos() {
   for item in "$dir"/*; do
     if [[ -d "$item" ]]; then
       if [[ -d "$item/.git" ]]; then
-        echo -n "Pulling the Git repository in $item. "
+        echo -n "Syncing the Git repository in $item. "
         (cd "$item" && \
-          git fetch --all && \
-          git pull --all)
+          hub sync)
         echo
       else
         pull_git_repos "$item"
