@@ -20,10 +20,12 @@ pull_git_repos() {
   for item in "$dir"/*; do
     if [[ -d "$item" ]]; then
       if [[ -d "$item/.git" ]]; then
-        echo -n "Syncing the Git repository in $item. "
+        echo -n "[sync] `date +"%Y-%m-%d-%H:%M:%S"` Syncing the Git repository in $item. "
         (cd "$item" && \
+          git fetch --all && \
+          git branch -r | grep -v '\->' | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g" | while read remote; do git branch --track "${remote#origin/}" "$remote" 2>/dev/null; done && \
           hub sync)
-        echo
+        # echo
       else
         pull_git_repos "$item"
       fi
