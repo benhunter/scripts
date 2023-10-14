@@ -6,6 +6,11 @@ usage() {
 
 # set -x
 
+if [ -z "$1" ]; then # if $1 is empty
+  usage
+  exit 1
+fi
+
 # BASE_DIR="./tmp"
 BASE_DIR=$1
 DRY_RUN=false
