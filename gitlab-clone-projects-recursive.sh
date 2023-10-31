@@ -1,7 +1,7 @@
 #! /bin/zsh
 
 usage() {
-  echo "Usage: ./clone-all-gitlab-projects.sh <BASE_DIR> [-d|--dry-run] [-f|--file GITLAB_PROJECTS_FILE]"
+  echo "Usage: ./gitlab-clone-projects-recursive.sh <BASE_DIR> [-d|--dry-run] [-f|--file GITLAB_PROJECTS_FILE]"
 }
 
 should_skip() {
