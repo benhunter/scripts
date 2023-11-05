@@ -5,6 +5,9 @@ CURRENT_DIRECTORY_NAME=$(basename "$(pwd)")
 CURRENT_DIRECTORY_NAME_URL_ENCODED=$(perl -MURI::Escape -e 'print uri_escape($ARGV[0]);' "$CURRENT_DIRECTORY_NAME")
 REPO_REMOTE_URL=$(git config remote.origin.url)
 
+# Remove trailing / from $REPO_REMOTE_URL
+REPO_REMOTE_URL=${REPO_REMOTE_URL%/}
+
 # Query GitLab API for projects matching the current directory name
 PROJECTS_JSON=$(glab api "projects?search=$CURRENT_DIRECTORY_NAME_URL_ENCODED")
 

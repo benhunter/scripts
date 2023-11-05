@@ -1,7 +1,7 @@
 #! /bin/zsh
 
 usage() {
-  echo "Usage: ./gitlab-clone-projects-recursive.sh <BASE_DIR> [-d|--dry-run] [-f|--file GITLAB_PROJECTS_FILE]"
+  echo "Usage: ./gitlab-clone-projects-recursive.sh <BASE_DIR> [-d|--dry-run] [-f|--file GITLAB_PROJECTS_FILE] --get-projects-file"
 }
 
 should_skip() {
@@ -45,6 +45,10 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
+    --get-projects-file)
+      GET_PROJECTS_FILE=true
+      shift # past argument
+      ;;
     -*|--*)
       usage
       exit 1
@@ -73,6 +77,11 @@ if [ -z "$GITLAB_PROJECTS_FILE" ]; then
   glab api projects --paginate | jq -s "add" | jq -c "sort_by(.path_with_namespace) | .[]" > $GITLAB_PROJECTS_FILE
 else
   echo "GITLAB_PROJECTS_FILE set to $GITLAB_PROJECTS_FILE"
+fi
+
+if [ "$GET_PROJECTS_FILE" = true ]; then
+  echo "Exiting after getting projects file."
+  exit 0
 fi
 
 echo "Found $(cat $GITLAB_PROJECTS_FILE| wc -l | awk '{print $1}') projects from GitLab."
