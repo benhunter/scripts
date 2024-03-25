@@ -1,14 +1,15 @@
 #! /bin/zsh
 
 usage() {
-  echo "Usage: ./gitlab-clone-projects-recursive.sh <BASE_DIR> [-d|--dry-run] [-f|--file GITLAB_PROJECTS_FILE] --get-projects-file"
+  echo "Usage: ./gitlab-clone-projects-recursive.sh <BASE_DIR> [-d|--dry-run] [-f|--file GITLAB_PROJECTS_FILE] [--get-projects-file"]
 }
 
 should_skip() {
   local REPO=$1
-  local -n SKIP_STRINGS=$2
+  local SKIP_STRINGS_VAR=$2
 
-  for SKIP_STRING in "${SKIP_STRINGS[@]}"; do
+  # The (@P) flag is used in zsh to indirectly reference an array variable. This should allow you to pass the name of the array variable as a string to the function and then reference the array indirectly inside the function.
+  for SKIP_STRING in "${(@P)SKIP_STRINGS_VAR}"; do
     if [[ $REPO == *"$SKIP_STRING"* ]]; then
       echo "Skipping $REPO because it contains: $SKIP_STRING"
       return 0  # Skip
@@ -16,6 +17,19 @@ should_skip() {
   done
   return 1  # Do not skip
 }
+
+# should_skip() {
+#   local REPO=$1
+#   local -n SKIP_STRINGS=$2 # error in zsh: bad option: -n
+#
+#   for SKIP_STRING in "${SKIP_STRINGS[@]}"; do
+#     if [[ $REPO == *"$SKIP_STRING"* ]]; then
+#       echo "Skipping $REPO because it contains: $SKIP_STRING"
+#       return 0  # Skip
+#     fi
+#   done
+#   return 1  # Do not skip
+# }
 
 # set -x
 

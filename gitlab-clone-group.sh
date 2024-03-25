@@ -1,7 +1,7 @@
 #! /bin/zsh
 
-echo "TODO: this script is WIP"
-exit 1
+#echo "TODO: this script is WIP"
+#exit 1
 
 usage() {
   echo "Usage: $0 <GROUP_NAME>"
@@ -26,8 +26,8 @@ fi
 #   -c # compact output
 #   .[] # for each item in array
 PROJECTS=$(glab api groups/$1/projects | jq -c ".[]")
-# echo $PROJECTS
-# exit 0
+echo $PROJECTS
+exit 0
 
 # echo $PROJECTS | jq -r '.[].web_url' | xargs -n1 -I {} echo "git clone --recurse-submodules {} $1"
 
