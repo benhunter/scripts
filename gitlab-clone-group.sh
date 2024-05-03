@@ -14,9 +14,11 @@ if [ -z "$1" ]; then # if $1 is empty
   exit 1
 fi
 
-if [ ! -d "$1" ]; then # if $1 directory does not exist
-  mkdir -p "$1"
-fi
+# Remove if using group ID instead of path
+# if [ ! -d "$1" ]; then # if $1 directory does not exist
+  # echo "Creating directory: $1"
+  # mkdir -p "$1"
+# fi
 
 # glab api groups/$1/projects | jq -r '.[].web_url' | xargs -n1 -I {} echo "git clone {} $1"
 # glab api groups/$1/projects | jq -r '.[].web_url' | xargs -n1 -I {} git clone --recurse-submodules {} $1
@@ -25,9 +27,9 @@ fi
 # jq explanation:
 #   -c # compact output
 #   .[] # for each item in array
+echo "Fetching projects for group: $1"
 PROJECTS=$(glab api groups/$1/projects | jq -c ".[]")
-echo $PROJECTS
-exit 0
+echo "PROJECTS=$PROJECTS"
 
 # echo $PROJECTS | jq -r '.[].web_url' | xargs -n1 -I {} echo "git clone --recurse-submodules {} $1"
 
@@ -38,8 +40,10 @@ echo $PROJECTS | while IFS= read -r PROJECT; do
   URL=$(echo $PROJECT | jq -r '.web_url')
   DIRECTORY=$1/$PROJECT_NAME
   echo "  git clone $URL $DIRECTORY"
-  # git clone --recurse-submodules $URL $DIRECTORY
+  git clone --recurse-submodules $URL $DIRECTORY
 done
+
+echo "Done cloning projects for group: $1"
 
 SUBGROUPS=$(glab api groups/$1/subgroups | jq -c ".[]")
 
@@ -52,3 +56,5 @@ echo $SUBGROUPS | while IFS= read -r GROUP; do
   gitlab-clone-group.sh $GROUP
 done
 
+echo "Done cloning subgroups for group: $1
+exit 0
