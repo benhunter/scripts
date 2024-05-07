@@ -11,13 +11,12 @@ list_git_status_recursive() {
             if is_git_repository "$dir"; then
               # Check the status of the directory using Git
               git_status=$(git -C "$dir" status --porcelain 2>/dev/null)
-              git_status_branch=$(git -C "$dir" status --porcelain --short --branch 2>/dev/null)
+              # git_status_branch=$(git -C "$dir" status --porcelain --short --branch 2>/dev/null)
               # If there are changes, output the directory path
               if [ -n "$git_status" ]; then
                 REMOTE=$(git -C "$dir" remote -v | grep "fetch" | cut -w -f2) # List remotes
                 REALPATH=$(realpath "$dir")
                 echo "$REALPATH > $REMOTE has changes:"
-                echo $git_status_branch
                 git -C "$dir" status --porcelain --short --branch 2>/dev/null
                 echo
               fi
