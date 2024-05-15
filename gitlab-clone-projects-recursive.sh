@@ -115,6 +115,15 @@ cat $GITLAB_PROJECTS_FILE | while IFS= read -r LINE; do
   REPO_PATH=$BASE_DIR/$(echo $CLEAN_LINE | jq -r .path_with_namespace)
   REPO_URL=$(echo $CLEAN_LINE | jq -r .web_url)
 
+  if [ -z "$REPO_PATH" ] || [ -z "$REPO_URL" ]; then
+    echo "ERROR: jq couldn't parse:"
+    echo "ERROR:   LINE=$LINE"
+    echo "ERROR:   REPO_PATH=$REPO_PATH"
+    echo "ERROR:   REPO_URL=$REPO_URL"
+    echo "ERROR:   Skipping"
+    continue
+  fi
+
   if [ "$DRY_RUN" = true ]; then
     echo "Would have cloned: $REPO_URL to: $REPO_PATH"
     continue
