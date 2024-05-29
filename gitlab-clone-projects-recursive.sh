@@ -1,12 +1,15 @@
 #! /bin/zsh
 #
-# Get the projects json.
+# Get the projects json:
 #   gitlab-clone-projects-recursive.sh . -d --get-projects-file
 #
-# Filter for paths that have "security" or "asve" in them. Outputs the paths.
-#   cat GitLab-Projects-2024-05-13T1454.json | jq -s "map(select(.path_with_namespace | test(\"(security|asve)\"))) | sort_by(.path_with_namespace) | .[].path_with_namespace" | moar
-#   cat GitLab-Projects-2024-05-13T1454.json | jq -s "map(select(.path_with_namespace | test(\"(security|asve)\"))) | sort_by(.path_with_namespace) | .[]" > filtered-projects.json
-
+# List projects by path:
+#   cat GitLab-Projects-2024-05-29T0308.json | jq -sr ".[].path_with_namespace" | sort | moar
+#
+# Filter for paths that have "security" or "asve" in them. Outputs the paths:
+#   cat GitLab-Projects-2024-05-13T1454.json | jq -sc "map(select(.path_with_namespace | test(\"(security|asve)\"))) | sort_by(.path_with_namespace) | .[].path_with_namespace" | moar
+#   cat GitLab-Projects-2024-05-13T1454.json | jq -sc "map(select(.path_with_namespace | test(\"(security|asve)\"))) | sort_by(.path_with_namespace) | .[]" > filtered-projects.json
+#   gitlab-clone-projects-recursive.sh . -d -f filtered-projects.json
 
 usage() {
   echo "Usage: ./gitlab-clone-projects-recursive.sh <BASE_DIR> [-d|--dry-run] [-f|--file GITLAB_PROJECTS_FILE] [--get-projects-file"]
