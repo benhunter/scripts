@@ -1,21 +1,24 @@
 #! /bin/zsh
 
-j21() {
-  export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+# Set java_home to the provided version.
+# Args: $1 = version number (21, 17, etc)
+set_java_home() {
+  export JAVA_HOME=$(/usr/libexec/java_home -v $1)
   echo "JAVA_HOME=$JAVA_HOME"
+}
+
+j21() {
+  set_java_home 21
 }
 
 j19() {
-  export JAVA_HOME=$(/usr/libexec/java_home -v 19)
-  echo "JAVA_HOME=$JAVA_HOME"
+  set_java_home 19
 }
 
 j17() {
-  export JAVA_HOME=$(/usr/libexec/java_home -v 17)
-  echo "JAVA_HOME=$JAVA_HOME"
+  set_java_home 17
 }
 
 j11() {
-  export JAVA_HOME=$(/usr/libexec/java_home -v 11)
-  echo "JAVA_HOME=$JAVA_HOME"
+  set_java_home 11
 }
