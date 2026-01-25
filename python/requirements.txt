@@ -1,4 +1,4 @@
-certifi==2023.7.22
+certifi==2024.7.4
 charset-normalizer==3.3.2
 idna==3.4
 python-gitlab @ git+https://github.com/python-gitlab/python-gitlab.git@e7229ce833baa2ed23ed3dea0324e6e36fdb8d21
