@@ -8,79 +8,188 @@ PORT = 8787
 
 def get_zpool_status() -> str:
     p = subprocess.run(
-        ["/sbin/zpool", "status", "-P"],
+        ["/sbin/zpool", "status", "-v"],
         capture_output=True,
         text=True,
-        timeout=5,
+        timeout=8,
     )
     out = p.stdout if p.returncode == 0 else (p.stdout + "\n" + p.stderr)
     return out.rstrip("\n")
 
-def parse_resilver_info(zpool_output: str) -> dict:
+def _extract_pool_blocks(zpool_output: str) -> list[dict]:
     """
-    Tries to extract resilver progress/ETA from the 'scan:' line(s) of `zpool status`.
-
-    Common patterns include:
-      scan: resilver in progress since ...
-            ... , 28.4% done, 0 days 12:34:56 to go
-
-    Returns:
-      {
-        "active": bool,
-        "state": str,        # e.g., "resilver in progress", "scrub repaired ...", etc.
-        "pct_done": float|None,
-        "eta": str|None      # the trailing "X to go" portion, without "to go"
-      }
+    Split `zpool status` output into per-pool blocks.
+    Returns list of { "pool": "<name>", "lines": [..], "scan": "<scan joined>"|None }.
     """
     lines = zpool_output.splitlines()
+    blocks = []
+    cur = None
 
-    scan_line = None
-    for i, line in enumerate(lines):
-        if line.strip().startswith("scan:"):
-            # Include up to a couple continuation lines (indented) because zpool status wraps
-            buf = [line.strip()]
-            for j in range(i + 1, min(i + 4, len(lines))):
-                if lines[j].startswith(" ") or lines[j].startswith("\t"):
-                    buf.append(lines[j].strip())
-                else:
-                    break
-            scan_line = " ".join(buf)
-            break
+    for line in lines:
+        m_pool = re.match(r"^\s*pool:\s*(\S+)\s*$", line)
+        if m_pool:
+            if cur:
+                blocks.append(cur)
+            cur = {"pool": m_pool.group(1), "lines": [], "scan": None}
+            continue
+        if cur is not None:
+            cur["lines"].append(line)
 
-    if not scan_line:
-        return {"active": False, "state": "scan: (not found)", "pct_done": None, "eta": None}
+    if cur:
+        blocks.append(cur)
 
-    # Example scan_line:
-    # "scan: resilver in progress since ... 1.23T resilvered, 28.4% done, 0 days 12:34:56 to go"
-    # We'll keep the 'scan:' prefix out of the state.
-    state = scan_line
-    if state.lower().startswith("scan:"):
-        state = state[5:].strip()
+    for b in blocks:
+        scan = None
+        for i, line in enumerate(b["lines"]):
+            if line.strip().startswith("scan:"):
+                buf = [line.strip()]
+                # scan block typically wraps across indented lines
+                for j in range(i + 1, min(i + 6, len(b["lines"]))):
+                    if b["lines"][j].startswith(" ") or b["lines"][j].startswith("\t"):
+                        buf.append(b["lines"][j].strip())
+                    else:
+                        break
+                scan = " ".join(buf)
+                break
+        b["scan"] = scan
+    return blocks
 
-    # Determine whether it's a resilver in progress
-    active = bool(re.search(r"\bresilver\b", state, re.IGNORECASE) and re.search(r"\bin progress\b", state, re.IGNORECASE))
+def parse_resilver_info(zpool_output: str) -> dict:
+    """
+    Returns summary for ANY pool that has 'resilver in progress'.
+    If multiple pools are resilvering, returns the first one found.
+    """
+    for b in _extract_pool_blocks(zpool_output):
+        scan = b["scan"] or ""
+        if not scan:
+            continue
 
-    # Percent done (optional)
-    pct_done = None
-    m_pct = re.search(r"(\d+(?:\.\d+)?)%\s+done", state)
-    if m_pct:
-        try:
-            pct_done = float(m_pct.group(1))
-        except ValueError:
-            pct_done = None
+        state = scan[5:].strip() if scan.lower().startswith("scan:") else scan.strip()
+        active = bool(re.search(r"\bresilver\b", state, re.IGNORECASE) and re.search(r"\bin progress\b", state, re.IGNORECASE))
+        if not active:
+            continue
 
-    # ETA / remaining time (optional)
-    eta = None
-    m_eta = re.search(r",\s*([^,]+?)\s+to go\b", state)
-    if m_eta:
-        eta = m_eta.group(1).strip()
-    else:
-        # Some variants may not have a comma before ETA
-        m_eta2 = re.search(r"\b(\d+\s+days?\s+)?\d{1,2}:\d{2}:\d{2}\s+to go\b", state)
-        if m_eta2:
-            eta = m_eta2.group(0).replace("to go", "").strip()
+        pct_done = None
+        m_pct = re.search(r"(\d+(?:\.\d+)?)%\s+done", state)
+        if m_pct:
+            try:
+                pct_done = float(m_pct.group(1))
+            except ValueError:
+                pct_done = None
 
-    return {"active": active, "state": state, "pct_done": pct_done, "eta": eta}
+        eta = None
+        m_eta = re.search(r",\s*([^,]+?)\s+to go\b", state)
+        if m_eta:
+            eta = m_eta.group(1).strip()
+        else:
+            m_eta2 = re.search(r"\b(\d+\s+days?\s+)?\d{1,2}:\d{2}:\d{2}\s+to go\b", state)
+            if m_eta2:
+                eta = m_eta2.group(0).replace("to go", "").strip()
+
+        return {"active": True, "pool": b["pool"], "state": state, "pct_done": pct_done, "eta": eta}
+
+    return {"active": False, "pool": None, "state": "No resilver in progress", "pct_done": None, "eta": None}
+
+def parse_scrub_info(zpool_output: str) -> dict:
+    """
+    Scrub widget logic:
+      - If any pool has "scrub in progress", show that (first match).
+      - Else, show the most recent "scrub repaired ..." line (first match).
+    """
+    blocks = _extract_pool_blocks(zpool_output)
+
+    # Prefer active scrub
+    for b in blocks:
+        scan = b["scan"] or ""
+        if not scan:
+            continue
+
+        state = scan[5:].strip() if scan.lower().startswith("scan:") else scan.strip()
+        active = bool(re.search(r"\bscrub\b", state, re.IGNORECASE) and re.search(r"\bin progress\b", state, re.IGNORECASE))
+        if not active:
+            continue
+
+        pct_done = None
+        m_pct = re.search(r"(\d+(?:\.\d+)?)%\s+done", state)
+        if m_pct:
+            try:
+                pct_done = float(m_pct.group(1))
+            except ValueError:
+                pct_done = None
+
+        eta = None
+        m_eta = re.search(r",\s*([^,]+?)\s+to go\b", state)
+        if m_eta:
+            eta = m_eta.group(1).strip()
+        else:
+            # Many scrubs will explicitly say "no estimated completion time"
+            if re.search(r"\bno estimated completion time\b", state, re.IGNORECASE):
+                eta = None
+
+        return {
+            "active": True,
+            "pool": b["pool"],
+            "state": state,
+            "pct_done": pct_done,
+            "eta": eta,
+            "result": None,
+            "duration": None,
+            "when": None,
+        }
+
+    # Otherwise: completed scrub line (example you gave):
+    # scan: scrub repaired 0B in 00:00:12 with 0 errors on Sun Feb  8 03:45:13 2026
+    for b in blocks:
+        scan = b["scan"] or ""
+        if not scan:
+            continue
+
+        state = scan[5:].strip() if scan.lower().startswith("scan:") else scan.strip()
+        if not re.search(r"\bscrub\b", state, re.IGNORECASE):
+            continue
+        if re.search(r"\bin progress\b", state, re.IGNORECASE):
+            continue
+
+        m_done = re.search(
+            r"scrub\s+repaired\s+(\S+)\s+in\s+(\S+)\s+with\s+(\d+)\s+errors\s+on\s+(.+)$",
+            state,
+            re.IGNORECASE,
+        )
+        if m_done:
+            repaired, duration, errors, when = m_done.group(1), m_done.group(2), m_done.group(3), m_done.group(4)
+            return {
+                "active": False,
+                "pool": b["pool"],
+                "state": state,
+                "pct_done": None,
+                "eta": None,
+                "result": f"repaired {repaired}, {errors} errors",
+                "duration": duration,
+                "when": when,
+            }
+
+        # Fallback: show whatever scan line exists
+        return {
+            "active": False,
+            "pool": b["pool"],
+            "state": state,
+            "pct_done": None,
+            "eta": None,
+            "result": None,
+            "duration": None,
+            "when": None,
+        }
+
+    return {
+        "active": False,
+        "pool": None,
+        "state": "No scrub information found",
+        "pct_done": None,
+        "eta": None,
+        "result": None,
+        "duration": None,
+        "when": None,
+    }
 
 INDEX_HTML = """<!doctype html>
 <html>
@@ -94,17 +203,23 @@ INDEX_HTML = """<!doctype html>
     button { padding: 6px 10px; cursor: pointer; }
     .meta { color:#666; font-size: 0.9rem; }
 
+    .widgets { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 12px; }
+    @media (min-width: 900px) {
+      .widgets { grid-template-columns: 1fr 1fr; }
+    }
+
     .widget {
       border: 1px solid #ddd;
       border-radius: 12px;
       padding: 12px;
-      margin-bottom: 12px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
-    .widget-title { font-size: 0.95rem; color:#444; margin-bottom: 6px; }
+    .widget-title { font-size: 0.95rem; color:#444; margin-bottom: 6px; display:flex; gap:10px; align-items: baseline; }
+    .widget-title .pool { color:#777; font-size: 0.9rem; }
     .widget-row { display:flex; gap: 16px; flex-wrap: wrap; align-items: baseline; }
-    .big { font-size: 1.25rem; font-weight: 650; }
+    .big { font-size: 1.20rem; font-weight: 650; }
     .kv { color:#555; }
+
     .pill {
       display:inline-block; padding: 2px 8px; border-radius: 999px;
       border: 1px solid #ddd; font-size: 0.85rem; color:#444;
@@ -130,11 +245,28 @@ INDEX_HTML = """<!doctype html>
     <span class="meta" id="stamp"></span>
   </div>
 
-  <div class="widget" id="resilverWidget">
-    <div class="widget-title">Resilver</div>
-    <div class="widget-row">
-      <div class="big" id="resilverHeadline">Loading...</div>
-      <div class="kv" id="resilverDetail"></div>
+  <!-- Widgets moved BELOW the bar (as requested) -->
+  <div class="widgets">
+    <div class="widget" id="resilverWidget">
+      <div class="widget-title">
+        <span>Resilver</span>
+        <span class="pool" id="resilverPool"></span>
+      </div>
+      <div class="widget-row">
+        <div class="big" id="resilverHeadline">Loading...</div>
+        <div class="kv" id="resilverDetail"></div>
+      </div>
+    </div>
+
+    <div class="widget" id="scrubWidget">
+      <div class="widget-title">
+        <span>Scrub</span>
+        <span class="pool" id="scrubPool"></span>
+      </div>
+      <div class="widget-row">
+        <div class="big" id="scrubHeadline">Loading...</div>
+        <div class="kv" id="scrubDetail"></div>
+      </div>
     </div>
   </div>
 
@@ -145,25 +277,33 @@ const out = document.getElementById("out");
 const stamp = document.getElementById("stamp");
 const intervalSel = document.getElementById("interval");
 
+const resilverPool = document.getElementById("resilverPool");
 const resilverHeadline = document.getElementById("resilverHeadline");
 const resilverDetail = document.getElementById("resilverDetail");
 
+const scrubPool = document.getElementById("scrubPool");
+const scrubHeadline = document.getElementById("scrubHeadline");
+const scrubDetail = document.getElementById("scrubDetail");
+
 let timer = null;
 
+function setPool(el, poolName) {
+  el.textContent = poolName ? `pool: ${poolName}` : "";
+}
+
 function formatResilverWidget(r) {
-  // r = { active, state, pct_done, eta }
   if (!r) {
+    setPool(resilverPool, null);
     resilverHeadline.textContent = "Unknown";
     resilverDetail.textContent = "";
     return;
   }
+  setPool(resilverPool, r.pool);
 
   if (r.active) {
-    // Headline: remaining time if present, else "In progress"
     const eta = r.eta ? r.eta : "In progress";
     resilverHeadline.innerHTML = `<span class="pill">ACTIVE</span> &nbsp; ${eta}`;
 
-    // Detail: percent + state
     const pct = (typeof r.pct_done === "number") ? `${r.pct_done.toFixed(1)}% done` : null;
     const parts = [];
     if (pct) parts.push(pct);
@@ -175,6 +315,35 @@ function formatResilverWidget(r) {
   }
 }
 
+function formatScrubWidget(s) {
+  if (!s) {
+    setPool(scrubPool, null);
+    scrubHeadline.textContent = "Unknown";
+    scrubDetail.textContent = "";
+    return;
+  }
+  setPool(scrubPool, s.pool);
+
+  if (s.active) {
+    const eta = s.eta ? s.eta : "No ETA";
+    scrubHeadline.innerHTML = `<span class="pill">ACTIVE</span> &nbsp; ${eta}`;
+
+    const pct = (typeof s.pct_done === "number") ? `${s.pct_done.toFixed(2)}% done` : null;
+    const parts = [];
+    if (pct) parts.push(pct);
+    if (s.state) parts.push(s.state);
+    scrubDetail.textContent = parts.join(" — ");
+  } else {
+    scrubHeadline.innerHTML = `<span class="pill">IDLE</span> &nbsp; Last scrub result`;
+    const parts = [];
+    if (s.result) parts.push(s.result);
+    if (s.duration) parts.push(`duration ${s.duration}`);
+    if (s.when) parts.push(`on ${s.when}`);
+    if (parts.length === 0 && s.state) parts.push(s.state);
+    scrubDetail.textContent = parts.join(" — ");
+  }
+}
+
 async function load() {
   try {
     const r = await fetch("/api/status", { cache: "no-store" });
@@ -183,12 +352,16 @@ async function load() {
 
     out.textContent = data.output || "";
     formatResilverWidget(data.resilver);
+    formatScrubWidget(data.scrub);
 
     stamp.textContent = "Last updated: " + new Date(data.ts * 1000).toLocaleString();
   } catch (e) {
     out.textContent = "Error: " + e;
+
     resilverHeadline.textContent = "Error";
     resilverDetail.textContent = String(e);
+    scrubHeadline.textContent = "Error";
+    scrubDetail.textContent = String(e);
   }
 }
 
@@ -226,8 +399,12 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/status"):
             import time, json
             output = get_zpool_status()
-            resilver = parse_resilver_info(output)
-            payload = json.dumps({"ts": int(time.time()), "output": output, "resilver": resilver})
+            payload = json.dumps({
+                "ts": int(time.time()),
+                "output": output,
+                "resilver": parse_resilver_info(output),
+                "scrub": parse_scrub_info(output),
+            })
             self._send(200, payload.encode("utf-8"), "application/json; charset=utf-8")
             return
 
