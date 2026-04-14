@@ -354,13 +354,15 @@ Save-CommandOutput -Title "DISM ScanHealth" -Path (Join-Path $repairDir "dism_sc
     DISM /Online /Cleanup-Image /ScanHealth
 }
 
+$systemDrive = $env:SystemDrive
+
 if ($RunChkdskScan) {
     Save-CommandOutput -Title "CHKDSK /scan" -Path (Join-Path $repairDir "chkdsk_scan.txt") -ScriptBlock {
-        chkdsk C: /scan
+        chkdsk $systemDrive /scan
     }
 }
 else {
-    Save-Text -Path (Join-Path $repairDir "chkdsk_scan.txt") -Text "Skipped. Re-run with -RunChkdskScan to execute: chkdsk C: /scan"
+    Save-Text -Path (Join-Path $repairDir "chkdsk_scan.txt") -Text "Skipped. Re-run with -RunChkdskScan to execute: chkdsk $systemDrive /scan"
 }
 
 if ($RunSfc) {
