@@ -15,4 +15,4 @@
 
 ## Windows
 
-- `troubleshoot-bsod.ps1` - Made for Windows 11 Surface Pro BSOD.
+- `./windows/troubleshoot-bsod.ps1` - Made for Windows 11 Surface Pro BSOD.
