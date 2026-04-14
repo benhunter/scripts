@@ -12,3 +12,7 @@
 - ./find-backup-files.sh
 - ./diagnose-disk-space-ubuntu.sh
 - ./clean-storage-safe.sh
+
+## Windows
+
+- `troubleshoot-bsod.ps1` - Made for Windows 11 Surface Pro BSOD.
