@@ -334,7 +334,7 @@ Save-CommandOutput -Title "WMIC disk status" -Path (Join-Path $rawDir "wmic_disk
 }
 
 Save-CommandOutput -Title "fsutil dirty query" -Path (Join-Path $rawDir "fsutil_dirty.txt") -ScriptBlock {
-    cmd /c "fsutil dirty query C:"
+    cmd /c "fsutil dirty query $env:SystemDrive"
 }
 
 Save-CommandOutput -Title "BitLocker status" -Path (Join-Path $rawDir "bitlocker_status.txt") -ScriptBlock {
