@@ -157,6 +157,16 @@ function Safe-Get {
     try { & $ScriptBlock } catch { $null }
 }
 
+function Get-EventMessageSafe {
+    param([Parameter(Mandatory = $true)]$EventRecord)
+    try {
+        $EventRecord.Message
+    }
+    catch {
+        "<Unable to read event message: $($_.Exception.Message)>"
+    }
+}
+
 # ---------------------------
 # Init
 # ---------------------------
@@ -222,7 +232,10 @@ Save-ObjectAsTable -Title "Recent BugCheck / Kernel-Power / Disk / NTFS / volmgr
     } | Where-Object {
         $_.Id -in 41, 55, 98, 129, 153, 157, 161, 6008, 1001, 7, 11, 15, 50, 51, 140
         -or $_.ProviderName -match 'disk|storahci|stornvme|Ntfs|volmgr|volsnap|Microsoft-Windows-WER-SystemErrorReporting|Kernel-Power'
-    } | Select-Object TimeCreated, Id, LevelDisplayName, ProviderName, Message
+    } | Select-Object TimeCreated, Id, LevelDisplayName, ProviderName, @{
+        Name       = 'Message'
+        Expression = { Get-EventMessageSafe -EventRecord $_ }
+    }
 }
 
 Save-ObjectAsTable -Title "Recent BugCheck events only" -Path (Join-Path $eventsDir "bugcheck_events.txt") -ScriptBlock {
