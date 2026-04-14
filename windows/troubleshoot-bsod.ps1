@@ -230,8 +230,8 @@ Save-ObjectAsTable -Title "Recent BugCheck / Kernel-Power / Disk / NTFS / volmgr
         LogName   = 'System'
         StartTime = $startTime
     } | Where-Object {
-        $_.Id -in 41, 55, 98, 129, 153, 157, 161, 6008, 1001, 7, 11, 15, 50, 51, 140
-        -or $_.ProviderName -match 'disk|storahci|stornvme|Ntfs|volmgr|volsnap|Microsoft-Windows-WER-SystemErrorReporting|Kernel-Power'
+        ($_.Id -in 41, 55, 98, 129, 153, 157, 161, 6008, 1001, 7, 11, 15, 50, 51, 140) -or
+        ($_.ProviderName -match 'disk|storahci|stornvme|Ntfs|volmgr|volsnap|Microsoft-Windows-WER-SystemErrorReporting|Kernel-Power')
     } | Select-Object TimeCreated, Id, LevelDisplayName, ProviderName, @{
         Name       = 'Message'
         Expression = { Get-EventMessageSafe -EventRecord $_ }
@@ -267,13 +267,15 @@ if ($ExportEventLogs) {
     Write-Info "Exporting event logs..."
     try {
         wevtutil epl System (Join-Path $logsDir "System.evtx")
-    } catch {
+    }
+    catch {
         Write-Warning "Failed to export System.evtx: $($_.Exception.Message)"
     }
 
     try {
         wevtutil epl Application (Join-Path $logsDir "Application.evtx")
-    } catch {
+    }
+    catch {
         Write-Warning "Failed to export Application.evtx: $($_.Exception.Message)"
     }
 }
@@ -305,20 +307,20 @@ Save-ObjectAsTable -Title "Storage reliability counters" -Path (Join-Path $rawDi
         $rc = Safe-Get { Get-StorageReliabilityCounter -PhysicalDisk $pd }
         if ($rc) {
             [PSCustomObject]@{
-                FriendlyName               = $pd.FriendlyName
-                SerialNumber               = $pd.SerialNumber
-                HealthStatus               = $pd.HealthStatus
-                Temperature                = $rc.Temperature
-                ReadErrorsTotal            = $rc.ReadErrorsTotal
-                WriteErrorsTotal           = $rc.WriteErrorsTotal
-                ReadLatencyMax             = $rc.ReadLatencyMax
-                WriteLatencyMax            = $rc.WriteLatencyMax
-                ReadLatencyAverage         = $rc.ReadLatencyAverage
-                WriteLatencyAverage        = $rc.WriteLatencyAverage
-                Wear                       = $rc.Wear
-                PowerOnHours               = $rc.PowerOnHours
-                UnsafeShutdownCount        = $rc.UnsafeShutdownCount
-                MediaErrors                = $rc.MediaErrors
+                FriendlyName        = $pd.FriendlyName
+                SerialNumber        = $pd.SerialNumber
+                HealthStatus        = $pd.HealthStatus
+                Temperature         = $rc.Temperature
+                ReadErrorsTotal     = $rc.ReadErrorsTotal
+                WriteErrorsTotal    = $rc.WriteErrorsTotal
+                ReadLatencyMax      = $rc.ReadLatencyMax
+                WriteLatencyMax     = $rc.WriteLatencyMax
+                ReadLatencyAverage  = $rc.ReadLatencyAverage
+                WriteLatencyAverage = $rc.WriteLatencyAverage
+                Wear                = $rc.Wear
+                PowerOnHours        = $rc.PowerOnHours
+                UnsafeShutdownCount = $rc.UnsafeShutdownCount
+                MediaErrors         = $rc.MediaErrors
             }
         }
         else {
@@ -407,8 +409,8 @@ Save-CommandOutput -Title "Installed drivers" -Path (Join-Path $driversDir "driv
 
 Save-ObjectAsTable -Title "Signed PnP drivers" -Path (Join-Path $driversDir "signed_drivers.txt") -ScriptBlock {
     Get-CimInstance Win32_PnPSignedDriver |
-        Sort-Object DeviceName |
-        Select-Object DeviceName, DriverVersion, DriverDate, Manufacturer, InfName
+    Sort-Object DeviceName |
+    Select-Object DeviceName, DriverVersion, DriverDate, Manufacturer, InfName
 }
 
 Save-ObjectAsTable -Title "Storage / disk / controller devices" -Path (Join-Path $driversDir "storage_devices.txt") -ScriptBlock {
@@ -420,12 +422,12 @@ Save-ObjectAsTable -Title "Storage / disk / controller devices" -Path (Join-Path
 
 Save-ObjectAsTable -Title "Surface-related drivers" -Path (Join-Path $driversDir "surface_related_drivers.txt") -ScriptBlock {
     Get-CimInstance Win32_PnPSignedDriver |
-        Where-Object {
-            $_.DeviceName -match 'Surface|UEFI|Firmware|NVMe|Storage'
-            -or $_.Manufacturer -match 'Microsoft'
-        } |
-        Sort-Object DeviceName |
-        Select-Object DeviceName, DriverVersion, DriverDate, Manufacturer, InfName
+    Where-Object {
+        $_.DeviceName -match 'Surface|UEFI|Firmware|NVMe|Storage'
+        -or $_.Manufacturer -match 'Microsoft'
+    } |
+    Sort-Object DeviceName |
+    Select-Object DeviceName, DriverVersion, DriverDate, Manufacturer, InfName
 }
 
 # ---------------------------
@@ -439,8 +441,8 @@ $memoryDmpPath = "C:\Windows\MEMORY.DMP"
 if (Test-Path $minidumpPath) {
     Save-ObjectAsTable -Title "Minidump files" -Path (Join-Path $dumpsDir "minidumps.txt") -ScriptBlock {
         Get-ChildItem $minidumpPath -File |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object Name, Length, CreationTime, LastWriteTime, FullName
+        Sort-Object LastWriteTime -Descending |
+        Select-Object Name, Length, CreationTime, LastWriteTime, FullName
     }
 
     try {
@@ -530,18 +532,18 @@ if ($reliability) {
 
 # Event counts
 $bugcheckCount = (Safe-Get {
-    (Get-WinEvent -FilterHashtable @{ LogName='System'; Id=1001; StartTime=$startTime } | Measure-Object).Count
-}) ?? 0
+        (Get-WinEvent -FilterHashtable @{ LogName = 'System'; Id = 1001; StartTime = $startTime } | Measure-Object).Count
+    }) ?? 0
 
 $kernelPowerCount = (Safe-Get {
-    (Get-WinEvent -FilterHashtable @{ LogName='System'; Id=41; StartTime=$startTime } | Measure-Object).Count
-}) ?? 0
+        (Get-WinEvent -FilterHashtable @{ LogName = 'System'; Id = 41; StartTime = $startTime } | Measure-Object).Count
+    }) ?? 0
 
 $diskEventCount = (Safe-Get {
-    (Get-WinEvent -FilterHashtable @{ LogName='System'; StartTime=$startTime } |
+        (Get-WinEvent -FilterHashtable @{ LogName = 'System'; StartTime = $startTime } |
         Where-Object { $_.ProviderName -match 'disk|storahci|stornvme|Ntfs|volmgr|volsnap' } |
         Measure-Object).Count
-}) ?? 0
+    }) ?? 0
 
 $summaryFindings.Add("BugCheck events in last $DaysBack days: $bugcheckCount")
 $summaryFindings.Add("Kernel-Power 41 events in last $DaysBack days: $kernelPowerCount")
