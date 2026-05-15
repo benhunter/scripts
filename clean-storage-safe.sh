@@ -145,7 +145,7 @@ cleanup_snap() {
       rev="$(awk '{print $3}' <<<"$line")"
       notes="$(awk '{print $NF}' <<<"$line")"
 
-      if [[ "$notes" == "disabled" && -n "$name" && -n "$rev" ]]; then
+      if [[ ",$notes," == *",disabled,"* && -n "$name" && -n "$rev" ]]; then
         disabled_revisions+=("${name}:${rev}")
       fi
     done <<< "$snap_list_output"
