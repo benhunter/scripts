@@ -6,6 +6,7 @@ set -Eeuo pipefail
 # Interactive cleanup helper for Ubuntu/Linux developer systems.
 # Targets:
 # - apt
+# - Snap
 # - Homebrew/Linuxbrew
 # - Cargo/Rust
 # - pnpm/npm
@@ -109,6 +110,81 @@ cleanup_apt() {
     run_cmd sudo apt clean
   else
     info "Skipped apt clean."
+  fi
+}
+
+cleanup_snap() {
+  have snap || return 0
+
+  say "Snap cleanup"
+
+  local snap_list_output
+  snap_list_output="$(snap list --all 2>/dev/null || true)"
+
+  info "Installed snaps and revisions:"
+  if [[ -n "$snap_list_output" ]]; then
+    printf '%s\n' "$snap_list_output"
+  else
+    warn "Unable to read 'snap list --all'. Snap may not be fully available."
+  fi
+
+  info "Snap storage paths:"
+  show_path_size /var/lib/snapd/snaps
+  show_path_size /var/snap
+  show_path_size "$HOME/snap"
+
+  local -a disabled_revisions=()
+  local line name rev notes
+
+  if [[ -n "$snap_list_output" ]]; then
+    while IFS= read -r line; do
+      [[ "$line" == Name[[:space:]]* ]] && continue
+      [[ -z "$line" ]] && continue
+
+      name="$(awk '{print $1}' <<<"$line")"
+      rev="$(awk '{print $3}' <<<"$line")"
+      notes="$(awk '{print $NF}' <<<"$line")"
+
+      if [[ "$notes" == "disabled" && -n "$name" && -n "$rev" ]]; then
+        disabled_revisions+=("${name}:${rev}")
+      fi
+    done <<< "$snap_list_output"
+  fi
+
+  if [[ ${#disabled_revisions[@]} -eq 0 ]]; then
+    info "No disabled Snap revisions found."
+  else
+    echo
+    info "Disabled Snap revisions that can usually be removed safely:"
+    printf '  %s\n' "${disabled_revisions[@]}"
+
+    if confirm "Remove all disabled Snap revisions shown above?"; then
+      local entry
+      for entry in "${disabled_revisions[@]}"; do
+        name="${entry%%:*}"
+        rev="${entry##*:}"
+        run_cmd sudo snap remove "$name" --revision="$rev"
+      done
+    else
+      info "Skipped disabled Snap revision cleanup."
+    fi
+  fi
+
+  local refresh_retain
+  refresh_retain="$(snap get system refresh.retain 2>/dev/null || true)"
+
+  echo
+  if [[ -n "$refresh_retain" ]]; then
+    info "Current Snap retained revision count: $refresh_retain"
+  else
+    info "Current Snap retained revision count is not explicitly set."
+  fi
+
+  warn "A lower retained revision count reduces future disk growth but keeps fewer rollback revisions."
+  if confirm "Set Snap retained revisions to 2?"; then
+    run_cmd sudo snap set system refresh.retain=2
+  else
+    info "Skipped Snap retention change."
   fi
 }
 
@@ -423,20 +499,21 @@ Recommended usage:
 
 Sections:
   1) apt
-  2) Homebrew
-  3) Cargo global cache
-  4) Cargo target/ directories under current directory
-  5) pnpm store
-  6) node_modules under current directory
-  7) npm cache
-  8) pip cache
-  9) Go module cache
- 10) Gradle cache
- 11) Maven repository
- 12) systemd journals
- 13) /tmp and /var/tmp old files
- 14) ~/.cache
- 15) Trash
+  2) Snap
+  3) Homebrew
+  4) Cargo global cache
+  5) Cargo target/ directories under current directory
+  6) pnpm store
+  7) node_modules under current directory
+  8) npm cache
+  9) pip cache
+ 10) Go module cache
+ 11) Gradle cache
+ 12) Maven repository
+ 13) systemd journals
+ 14) /tmp and /var/tmp old files
+ 15) ~/.cache
+ 16) Trash
 
 EOF
 }
@@ -446,6 +523,7 @@ main() {
   summary_before
 
   if confirm "Run apt cleanup section?"; then cleanup_apt; fi
+  if confirm "Run Snap cleanup section?"; then cleanup_snap; fi
   if confirm "Run Homebrew cleanup section?"; then cleanup_homebrew; fi
   if confirm "Run Cargo global cache cleanup section?"; then cleanup_cargo_global; fi
   if confirm "Run Cargo target directory cleanup section (searches under current directory)?"; then cleanup_cargo_targets; fi
@@ -468,4 +546,3 @@ main() {
 }
 
 main "$@"
-
