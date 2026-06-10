@@ -1,16 +1,22 @@
-#!/bin/bash
-# Update systems using apt package manager. Ubuntu, Kali.
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# Prompt for sudo if not root.
-if [ $EUID != 0 ]; then
-	echo $?
-	sudo "$0" "$@"
-	exit $?
+ASSUME_YES=false
+[[ "${1:-}" == "--yes" ]] && ASSUME_YES=true
+
+if [[ $EUID -ne 0 ]]; then
+  exec sudo -- "$0" "$@"
 fi
 
-echo "Updating..."
+if ! $ASSUME_YES; then
+  echo "This will update package indexes, upgrade packages, run dist-upgrade,"
+  echo "clean the package cache, and remove unused packages."
+  read -r -p "Continue? [y/N]: " reply
+  [[ "$reply" =~ ^[Yy]([Ee][Ss])?$ ]] || exit 0
+fi
+
 apt-get update
 apt-get -y upgrade
-apt-get dist-upgrade
+apt-get -y dist-upgrade
 apt-get clean
 apt-get -y autoremove

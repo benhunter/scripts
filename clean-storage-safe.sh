@@ -28,6 +28,14 @@ set -Eeuo pipefail
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
+if [[ $EUID -eq 0 && -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+  USER_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+  if [[ -n "$USER_HOME" && -d "$USER_HOME" ]]; then
+    HOME="$USER_HOME"
+    export HOME
+  fi
+fi
+
 DIVIDER="===================================================================="
 
 say() {

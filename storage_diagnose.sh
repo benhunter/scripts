@@ -1,7 +1,8 @@
 #!/bin/bash
 # storage_diagnose.sh - Collects comprehensive storage diagnostics on Ubuntu
 
-OUTPUT="/tmp/storage_report_$(hostname)_$(date +%Y%m%d_%H%M%S).log"
+umask 077
+OUTPUT="$(mktemp "${TMPDIR:-/tmp}/storage_report_$(hostname).XXXXXX.log")"
 
 echo "Saving storage diagnostics to: $OUTPUT"
 exec > >(tee -a "$OUTPUT") 2>&1

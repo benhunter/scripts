@@ -1,39 +1,30 @@
-#!/bin/sh
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# Example usage:
-# PROJECT_ID="1234"
-# TARGET_TAG="tag-name"
-# check-image-publish-time.sh "$PROJECT_ID" "$TARGET_TAG"
+PROJECT_ID="${1:-}"
+TARGET_TAG="${2:-}"
+[[ "$PROJECT_ID" =~ ^[0-9]+$ && -n "$TARGET_TAG" && "$TARGET_TAG" != -* ]] || {
+  echo "Usage: $0 PROJECT_ID TAG" >&2
+  exit 2
+}
 
-# set -x
-
-PROJECT_ID="$1"
-TARGET_TAG="$2"
-TAG_FOUND="false"
-REGISTRY_ID=$(glab api "projects/$PROJECT_ID/registry/repositories" | jq '.[] | .id')
-TAG_JSON=$(glab api projects/$PROJECT_ID/registry/repositories/$REGISTRY_ID/tags/$TARGET_TAG)
-
-# Check if the tag exists and get its creation timestamp
-CREATED_AT=$(echo "$TAG_JSON" | jq -r ". | .created_at")
-
-if [ -n "$CREATED_AT" ]; then
-    TAG_FOUND="true"
+mapfile -t REGISTRY_IDS < <(glab api "projects/$PROJECT_ID/registry/repositories" | jq -er '.[].id')
+if [[ ${#REGISTRY_IDS[@]} -ne 1 || ! "${REGISTRY_IDS[0]}" =~ ^[0-9]+$ ]]; then
+  echo "Expected exactly one container registry repository." >&2
+  exit 1
 fi
 
-# Display the result
-if [ "$TAG_FOUND" = "true" ]; then
-    # echo "Found tag '${TARGET_TAG}' in the container registry."
+ENCODED_TAG="$(jq -rn --arg value "$TARGET_TAG" '$value|@uri')"
+TAG_JSON="$(glab api "projects/$PROJECT_ID/registry/repositories/${REGISTRY_IDS[0]}/tags/$ENCODED_TAG")"
+CREATED_AT="$(jq -er '.created_at' <<< "$TAG_JSON")"
 
-    # Calculate the time difference between the current time and the image creation time
-    CURRENT_TIME=$(date -u +%s)
-    # CREATED_TIME=$(date -u -d "$CREATED_AT" +%s) # doesn't work on mac
-    CREATED_TIME=$(date -u -jf "%Y-%m-%dT%H:%M:%S" "${CREATED_AT%Z}" +%s 2> /dev/null)
-    TIME_DIFF=$((CURRENT_TIME - CREATED_TIME))
-
-    # Convert the time difference to a human-readable format
-    TIME_DIFF_HUMAN=$(printf '%dd %dh %dm %ds' $((TIME_DIFF/86400)) $((TIME_DIFF%86400/3600)) $((TIME_DIFF%3600/60)) $((TIME_DIFF%60)))
-
-    echo "Tag ${TARGET_TAG} published ${TIME_DIFF_HUMAN} ago."
+if date --version >/dev/null 2>&1; then
+  CREATED_TIME="$(date -u -d "$CREATED_AT" +%s)"
 else
-    echo "Tag ${TARGET_TAG} not found in the container registry."
+  CREATED_TIME="$(date -u -jf "%Y-%m-%dT%H:%M:%S" "${CREATED_AT%Z}" +%s)"
 fi
+CURRENT_TIME="$(date -u +%s)"
+TIME_DIFF=$((CURRENT_TIME - CREATED_TIME))
+printf 'Tag %s published %dd %dh %dm %ds ago.\n' "$TARGET_TAG" \
+  $((TIME_DIFF / 86400)) $((TIME_DIFF % 86400 / 3600)) \
+  $((TIME_DIFF % 3600 / 60)) $((TIME_DIFF % 60))

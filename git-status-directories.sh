@@ -27,4 +27,4 @@ list_git_status_recursive() {
 }
 
 # Start the recursive search from the current directory
-list_git_status_recursive $1
+list_git_status_recursive "${1:-.}"

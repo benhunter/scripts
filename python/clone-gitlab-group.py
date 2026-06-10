@@ -3,6 +3,15 @@ import sys
 import gitlab
 import os
 import subprocess
+from pathlib import Path
+
+
+def contained_path(parent_dir, child_name):
+    parent = Path(parent_dir).resolve()
+    destination = (parent / child_name).resolve()
+    if destination == parent or parent not in destination.parents:
+        raise ValueError(f'Unsafe destination path: {child_name}')
+    return str(destination)
 
 
 def clone_repo(repo_url, destination_path):
@@ -10,7 +19,10 @@ def clone_repo(repo_url, destination_path):
     if not os.path.exists(destination_path):
         try:
             print(f'Cloning {repo_url} into {destination_path}')
-            subprocess.run(['git', 'clone', repo_url, destination_path])
+            subprocess.run(
+                ['git', 'clone', '--', repo_url, destination_path],
+                check=True,
+            )
         except subprocess.CalledProcessError as e:
             print(f'An error occurred: {e}')
     else:
@@ -20,13 +32,13 @@ def clone_repo(repo_url, destination_path):
 def clone_project(project, parent_dir):
     print(f'Cloning project {project.path} in {parent_dir}')
     project_web_url = project.web_url
-    project_path = os.path.join(parent_dir, project.path)
+    project_path = contained_path(parent_dir, project.path)
     clone_repo(project_web_url, project_path)
 
 
 def clone_wiki(project, parent_dir):
     print(f'Cloning wiki for project {project.path} in {parent_dir}')
-    wiki_path = os.path.join(parent_dir, f"{project.path}.wiki")
+    wiki_path = contained_path(parent_dir, f"{project.path}.wiki")
     wiki_web_git_url = project.web_url + '.wiki.git'
 
     # if project.wikis.list() is empty, the wiki does not exist
@@ -46,7 +58,7 @@ def process_group(group_id, parent_dir, gitlab_client):
     group = gitlab_client.groups.get(group_id)
 
     # Make sure the directory structure matches the group structure
-    group_dir = os.path.join(parent_dir, group.path)
+    group_dir = contained_path(parent_dir, group.path)
     if not os.path.exists(group_dir):
         print(f'Creating directory {group_dir}')
         os.makedirs(group_dir)
@@ -80,8 +92,14 @@ def main():
     gitlab_token = os.environ.get('GITLAB_TOKEN')
     gitlab_host = os.environ.get('GITLAB_HOST', 'https://gitlab.com')
 
+    if not gitlab_token:
+        print('GITLAB_TOKEN is required', file=sys.stderr)
+        sys.exit(1)
     if not gitlab_host.startswith('http'):
         gitlab_host = f'https://{gitlab_host}'
+    if not gitlab_host.startswith('https://'):
+        print('GITLAB_HOST must use HTTPS', file=sys.stderr)
+        sys.exit(1)
 
     gitlab_client = gitlab.Gitlab(gitlab_host, private_token=gitlab_token)
 
@@ -89,6 +107,7 @@ def main():
         process_group(gitlab_group_id, os.getcwd(), gitlab_client)
     except Exception as e:
         print(f'An error occurred: {e}')
+        sys.exit(1)
 
 
 if __name__ == '__main__':

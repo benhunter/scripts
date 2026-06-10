@@ -1,15 +1,13 @@
-# Watch-Command.ps1 -Command "Get-Process" -Interval 2 -Clear
-# Add to PowerShell profile: Set-Alias -Name watch -Value Watch-Command
-# Add to PowerShell profile: Set-Alias -Name w -Value Watch-Command
-# 
-# Open your PowerShell profile: notepad $profile
-# copy and paste the following code into your PowerShell profile
-
 function Watch-Command {
+  [CmdletBinding()]
   param (
-    [string]$Command,
+    [Parameter(Mandatory)]
+    [scriptblock]$Command,
+
+    [ValidateRange(1, 86400)]
     [int]$Interval = 2,
-    [switch]$Clear = $false
+
+    [switch]$Clear
   )
 
   while ($true) {
@@ -19,8 +17,7 @@ function Watch-Command {
     Get-Date
     "Command: $Command"
     "Interval: $Interval"
-    "Clear: $Clear"
-    Invoke-Expression $Command
+    & $Command
     Start-Sleep -Seconds $Interval
   }
 }

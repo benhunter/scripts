@@ -10,10 +10,11 @@ scripts that delete files or modify system configuration.
 - `🚧 WIP` - Incomplete, experimental, or known to contain unfinished behavior.
 - `🔐 Elevated` - Requires root, administrator, or other privileged access.
 - `🧪 Example` - Demonstration code that needs customization before use.
+- `Retired` - Kept as a fail-closed stub for discoverability; it no longer performs its former operation.
 
 ## Git and GitHub
 
-- `⚠️` [`git-delete-merged-branches.sh`](git-delete-merged-branches.sh) - Opens a list of branches already merged into `main` in Neovim, then deletes the selected branches.
+- `⚠️` [`git-delete-merged-branches.sh`](git-delete-merged-branches.sh) - Uses a private temporary file to edit and delete selected branches already merged into `main` or `master`.
 - [`git-pull-recursive.sh`](git-pull-recursive.sh) - Recursively finds Git repositories under a directory and fetches and pulls each one.
 - [`git-remotes-recursive.sh`](git-remotes-recursive.sh) - Recursively lists Git repositories and their fetch remotes.
 - [`git-status-directories.sh`](git-status-directories.sh) - Recursively reports Git repositories with uncommitted changes.
@@ -26,7 +27,7 @@ scripts that delete files or modify system configuration.
 ## GitLab
 
 - [`gitlab-check-image-publish-time.sh`](gitlab-check-image-publish-time.sh) - Reports how long ago a GitLab container registry image tag was published.
-- `🚧` [`gitlab-clone-group.sh`](gitlab-clone-group.sh) - Clones projects from a GitLab group and attempts to process its subgroups; currently a work in progress.
+- `Retired` [`gitlab-clone-group.sh`](gitlab-clone-group.sh) - Retired unsafe prototype; use `python/clone-gitlab-group.py`.
 - [`gitlab-clone-projects-recursive.sh`](gitlab-clone-projects-recursive.sh) - Exports or reads GitLab project metadata and clones projects into their namespace directory structure.
 - [`gitlab-get-project-id-from-current-repo.sh`](gitlab-get-project-id-from-current-repo.sh) - Resolves the current repository's GitLab project ID by matching its remote URL.
 - [`gitlab-list-registry-images.sh`](gitlab-list-registry-images.sh) - Lists container registry tags for the current GitLab repository and reports each tag's age.
@@ -37,49 +38,49 @@ scripts that delete files or modify system configuration.
 
 - `⚠️` `🔐` [`clean-storage-safe.sh`](clean-storage-safe.sh) - Interactively reviews and cleans package caches, build artifacts, logs, temporary files, user caches, and trash.
 - [`diagnose-disk-space-ubuntu.sh`](diagnose-disk-space-ubuntu.sh) - Performs a read-only Ubuntu disk-usage audit and prints possible cleanup commands.
-- `⚠️` `🔐` [`expand_root_volume.sh`](expand_root_volume.sh) - Expands partition 2 and its ext4 root filesystem with `growpart` and `resize2fs`.
+- `⚠️` `🔐` [`expand_root_volume.sh`](expand_root_volume.sh) - Identifies and confirms a directly mounted ext4 root partition before resizing it.
 - [`find-backup-files.sh`](find-backup-files.sh) - Creates a report of recently modified documents, code, configuration, media, database, archive, and large files.
-- `⚠️` [`rm-recursive-.gradle.sh`](rm-recursive-.gradle.sh) - Recursively deletes every `.gradle` directory below the current directory.
-- `⚠️` [`rm-recursive-build.sh`](rm-recursive-build.sh) - Recursively deletes every `build` directory below the current directory.
-- `⚠️` [`rm-recursive-node_modules.sh`](rm-recursive-node_modules.sh) - Recursively deletes every `node_modules` directory below the current directory.
-- `⚠️` [`rm-recursive-postgres-data.sh`](rm-recursive-postgres-data.sh) - Recursively deletes every `postgres-data` directory below the current directory.
+- `⚠️` [`rm-recursive-.gradle.sh`](rm-recursive-.gradle.sh) - Previews and confirms symlink-safe removal of `.gradle` directories below a selected root.
+- `⚠️` [`rm-recursive-build.sh`](rm-recursive-build.sh) - Previews and confirms symlink-safe removal of `build` directories below a selected root.
+- `⚠️` [`rm-recursive-node_modules.sh`](rm-recursive-node_modules.sh) - Previews and confirms symlink-safe removal of `node_modules` directories below a selected root.
+- `⚠️` [`rm-recursive-postgres-data.sh`](rm-recursive-postgres-data.sh) - Previews and confirms symlink-safe removal of `postgres-data` directories below a selected root.
 - `🔐` [`storage_diagnose.sh`](storage_diagnose.sh) - Collects disk, partition, LVM, inode, large-file, ZFS, and snapshot diagnostics into a log in `/tmp`.
 - `⚠️` `🔐` [`update-apt.sh`](update-apt.sh) - Updates, upgrades, cleans, and removes unused packages on apt-based systems.
-- [`zfsdash.py`](zfsdash.py) - Serves a small web dashboard for ZFS pool status, scrub progress, and resilver progress.
+- [`zfsdash.py`](zfsdash.py) - Serves a localhost-only, cached web dashboard for ZFS pool status, scrub progress, and resilver progress.
 
 ## Docker, Cloud, and Deployment
 
 - [`docker-debug-container.sh`](docker-debug-container.sh) - Starts a Docker image interactively with `/bin/sh` as its entrypoint and removes the container afterward.
 - [`docker-list-tags-remote.sh`](docker-list-tags-remote.sh) - Lists Docker Hub tags for an image, optionally filtering them by text.
-- `⚠️` `🔐` `🧪` [`example-deploy.sh`](example-deploy.sh) - Example installer that clones or updates HeavyScript to its latest tag and creates a command wrapper.
+- `Retired` [`example-deploy.sh`](example-deploy.sh) - Retired root installer that trusted mutable upstream tags.
 - `⚠️` [`gcp-subnets-enable-flow-logs.sh`](gcp-subnets-enable-flow-logs.sh) - Enables VPC Flow Logs on every subnet in the active Google Cloud project.
 
 ## Networking
 
 - [`get-ip-from-domain-names.sh`](get-ip-from-domain-names.sh) - Reads domain names from a file and prints the IP addresses returned by `dig`.
-- [`http-wait.sh`](http-wait.sh) - Polls an HTTP host until it becomes reachable.
+- [`http-wait.sh`](http-wait.sh) - Polls a complete HTTP or HTTPS URL until it becomes reachable.
 - [`ssh-wait.sh`](ssh-wait.sh) - Retries an SSH connection until the target becomes reachable.
 
 ## Development Utilities
 
 - [`combine-md.sh`](combine-md.sh) - Combines Markdown files in the current directory into `combined.md`, adding a heading for each source file.
-- `🧪` [`generate-pdf-from-tex.ps1`](generate-pdf-from-tex.ps1) - Runs `pdflatex` in a TeX Live Docker container to generate a PDF from `week_8.tex`.
+- [`generate-pdf-from-tex.ps1`](generate-pdf-from-tex.ps1) - Runs `pdflatex` in a restricted, digest-pinned TeX Live container; shell escape requires explicit opt-in.
 - `🧪` [`is-command-in-path.sh`](is-command-in-path.sh) - Demonstrates checking whether a configured command, currently `cargo`, exists in `PATH`.
 - [`python-run-on-change.sh`](python-run-on-change.sh) - Uses `fswatch` to rerun a Python file whenever it changes.
-- [`Watch-Command.ps1`](Watch-Command.ps1) - Defines a PowerShell function that repeatedly runs a command at a configurable interval.
+- [`Watch-Command.ps1`](Watch-Command.ps1) - Repeatedly invokes a trusted PowerShell script block at a configurable interval.
 
 ## Platform Setup
 
 - [`bash-3-version-check-mac.sh`](bash-3-version-check-mac.sh) - Prints the version of macOS's system Bash.
 - [`bash-5-version-check-mac.sh`](bash-5-version-check-mac.sh) - Prints the version of Bash installed at `/usr/local/bin/bash`.
 - [`java_home.sh`](java_home.sh) - Defines macOS shell functions for switching `JAVA_HOME` between common JDK versions.
-- [`macos/ruby/chruby_local.sh`](macos/ruby/chruby_local.sh) - Installs `chruby` under the current user's home directory and configures shell startup files.
-- [`macos/ruby/ruby-install_local.sh`](macos/ruby/ruby-install_local.sh) - Installs `ruby-install` locally and uses it to install the latest stable Ruby.
-- `⚠️` `🔐` [`setup-kali.sh`](setup-kali.sh) - Bootstraps a Kali Linux installation with packages, tools, shell configuration, Ghidra, and security utilities.
+- `Retired` [`macos/ruby/chruby_local.sh`](macos/ruby/chruby_local.sh) - Retired unverified chruby installer.
+- `Retired` [`macos/ruby/ruby-install_local.sh`](macos/ruby/ruby-install_local.sh) - Retired unverified ruby-install bootstrapper.
+- `Retired` [`setup-kali.sh`](setup-kali.sh) - Retired root bootstrapper for obsolete, unverified third-party software.
 
 ## Windows and Active Directory
 
-- `🚧` [`Monitor-ADGroupChanges.ps1`](Monitor-ADGroupChanges.ps1) - Compares current Active Directory group membership with saved CSV state and reports additions and removals; includes work-in-progress code.
+- [`Monitor-ADGroupChanges.ps1`](Monitor-ADGroupChanges.ps1) - Atomically tracks Active Directory group membership in an ACL-restricted, spreadsheet-safe CSV state file.
 
 ## Browser Tools
 

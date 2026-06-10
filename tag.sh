@@ -45,8 +45,7 @@ echo "Bumping $VERSION_BUMP version to $NEW_TAG"
 
 # Create a new tag and push it to the remote repository
 git tag "$NEW_TAG"
-git push --tags
-git push
+git push origin "$NEW_TAG"
 
 exit 0
 
