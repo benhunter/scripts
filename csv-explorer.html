@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSV Viewer (Shell)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; line-height: 1.4; }
+    header { margin-bottom: 16px; }
+    h1 { font-size: 20px; margin: 0 0 8px 0; }
+    .card { border: 1px solid rgba(127,127,127,.35); border-radius: 10px; padding: 14px; margin: 12px 0; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    label { font-weight: 600; }
+    input[type="file"] { max-width: 100%; }
+    input[type="text"], select {
+      padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(127,127,127,.35);
+      background: Canvas; color: CanvasText;
+    }
+    ul { margin: 8px 0 0 20px; }
+    .muted { opacity: .8; }
+    .error { color: #b00020; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 12px; }
+    th, td { border: 1px solid rgba(127,127,127,.35); padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { position: sticky; top: 0; background: Canvas; z-index: 2; user-select: none; }
+    th.sortable { cursor: pointer; }
+    th .hdr { display: inline-flex; gap: 6px; align-items: center; }
+    th .arrow { opacity: .75; font-size: 11px; }
+    .table-wrap { max-height: 520px; overflow: auto; border-radius: 10px; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(127,127,127,.35); font-size: 12px; }
+    .kpi { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+    .kpi .item { border: 1px solid rgba(127,127,127,.35); border-radius: 10px; padding: 8px 10px; }
+    .kpi .item b { display: inline-block; min-width: 160px; }
+    .btn {
+      padding: 6px 10px; border-radius: 10px;
+      border: 1px solid rgba(127,127,127,.35); background: Canvas; color: CanvasText;
+      cursor: pointer;
+    }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CSV Viewer (Shell)</h1>
+    <div class="muted">Upload a CSV to list columns, compute stats, and browse/sort the entire dataset locally in your browser.</div>
+  </header>
+
+  <section class="card">
+    <div class="row">
+      <label for="csvFile">CSV file:</label>
+      <input id="csvFile" type="file" accept=".csv,text/csv" />
+      <span id="status" class="pill muted">No file loaded</span>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <label for="nullTokens">Null tokens:</label>
+      <input id="nullTokens" type="text" size="60" value=',null,NULL,N/A,NA,-' />
+      <span class="muted">Comma-separated. Empty string is always treated as null.</span>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <button id="recomputeBtn" class="btn" disabled>Recompute stats</button>
+      <span class="muted">Use after changing null tokens.</span>
+    </div>
+
+    <div id="message" class="error" style="margin-top:10px; display:none;"></div>
+  </section>
+
+  <section class="card" id="summaryCard" style="display:none;">
+    <div class="row">
+      <div><strong>Rows:</strong> <span id="rowCount">0</span></div>
+      <div><strong>Columns:</strong> <span id="colCount">0</span></div>
+      <div><strong>Delimiter:</strong> <span id="delimiter">,</span></div>
+      <span id="statsStatus" class="pill muted">Stats not computed</span>
+      <span id="tableStatus" class="pill muted">Table not rendered</span>
+    </div>
+  </section>
+
+  <section class="card" id="columnsCard" style="display:none;">
+    <strong>Columns</strong>
+    <ul id="columnsList"></ul>
+  </section>
+
+  <section class="card" id="allStatsCard" style="display:none;">
+    <div class="row">
+      <strong style="margin-right:8px;">All column statistics</strong>
+      <span class="muted">Click a header to sort. Click a column name to open the profile below.</span>
+    </div>
+    <div class="table-wrap" id="allStatsWrap" style="max-height:520px;"></div>
+  </section>
+
+  <section class="card" id="profileCard" style="display:none;">
+    <div class="row">
+      <strong style="margin-right:8px;">Column profile</strong>
+      <label for="profileColumn" class="muted" style="font-weight:600;">Select column:</label>
+      <select id="profileColumn"></select>
+      <span id="profileStatus" class="pill muted">Select a column</span>
+    </div>
+
+    <div class="kpi" id="profileKpis"></div>
+
+    <div class="row" style="margin-top:12px;">
+      <div style="flex:1; min-width: 280px;">
+        <strong>Top values</strong>
+        <div class="table-wrap" id="topValuesWrap" style="max-height:300px;"></div>
+      </div>
+      <div style="flex:1; min-width: 280px;">
+        <strong>Notes</strong>
+        <ul class="muted" style="margin-top:8px;">
+          <li><b>Null</b> means empty string or matches a configured null token.</li>
+          <li><b>Numeric</b> is inferred if at least 95% of non-null values parse as finite numbers.</li>
+          <li>Entire table sorting uses inferred type for the selected sort column.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="dataCard" style="display:none;">
+    <div class="row">
+      <strong style="margin-right:8px;">Entire table</strong>
+      <label for="tableSearch" class="muted" style="font-weight:600;">Search:</label>
+      <input id="tableSearch" type="text" placeholder="substring match across all columns" size="40" />
+      <label for="rowLimit" class="muted" style="font-weight:600;">Row limit:</label>
+      <select id="rowLimit">
+        <option value="0">All</option>
+        <option value="1000">1,000</option>
+        <option value="5000">5,000</option>
+        <option value="20000">20,000</option>
+      </select>
+      <span class="pill muted">Showing <span id="shownCount">0</span></span>
+      <span class="pill muted">Sort: <span id="dataSortLabel">none</span></span>
+    </div>
+
+    <div class="table-wrap" id="dataWrap" style="max-height:650px;"></div>
+  </section>
+
+<script>
+(() => {
+  const fileInput = document.getElementById('csvFile');
+  const nullTokensInput = document.getElementById('nullTokens');
+  const recomputeBtn = document.getElementById('recomputeBtn');
+
+  const statusEl = document.getElementById('status');
+  const messageEl = document.getElementById('message');
+
+  const summaryCard = document.getElementById('summaryCard');
+  const columnsCard = document.getElementById('columnsCard');
+  const allStatsCard = document.getElementById('allStatsCard');
+  const profileCard = document.getElementById('profileCard');
+  const dataCard = document.getElementById('dataCard');
+
+  const rowCountEl = document.getElementById('rowCount');
+  const colCountEl = document.getElementById('colCount');
+  const delimiterEl = document.getElementById('delimiter');
+  const statsStatusEl = document.getElementById('statsStatus');
+  const tableStatusEl = document.getElementById('tableStatus');
+
+  const columnsListEl = document.getElementById('columnsList');
+  const allStatsWrapEl = document.getElementById('allStatsWrap');
+
+  const profileSelectEl = document.getElementById('profileColumn');
+  const profileStatusEl = document.getElementById('profileStatus');
+  const profileKpisEl = document.getElementById('profileKpis');
+  const topValuesWrapEl = document.getElementById('topValuesWrap');
+
+  const tableSearchEl = document.getElementById('tableSearch');
+  const rowLimitEl = document.getElementById('rowLimit');
+  const dataWrapEl = document.getElementById('dataWrap');
+  const shownCountEl = document.getElementById('shownCount');
+  const dataSortLabelEl = document.getElementById('dataSortLabel');
+
+  // In-memory dataset
+  let headers = [];
+  let rows = [];
+  let currentDelimiter = ',';
+  let allStats = new Map(); // column -> stats summary (includes inferred type)
+
+  // Sort state for All Column Statistics
+  let allStatsSort = { key: 'nullCount', dir: 'desc' };
+
+  // Sort state for Entire Table
+  let dataSort = { key: null, dir: 'asc' }; // key is column name or null
+
+  // Table render state
+  let tableRenderToken = 0;
+
+  fileInput.addEventListener('change', async (e) => {
+    clearError();
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    statusEl.textContent = 'Loading…';
+    statusEl.classList.remove('muted');
+    recomputeBtn.disabled = true;
+
+    statsStatusEl.textContent = 'Stats not computed';
+    statsStatusEl.classList.add('muted');
+    tableStatusEl.textContent = 'Table not rendered';
+    tableStatusEl.classList.add('muted');
+
+    try {
+      const text = await file.text();
+
+      const sample = text.split(/\r?\n/).slice(0, 10).join('\n');
+      currentDelimiter = detectDelimiter(sample);
+      delimiterEl.textContent = currentDelimiter === '\t' ? '\\t' : currentDelimiter;
+
+      const parsed = parseCsv(text, currentDelimiter);
+      headers = parsed.headers;
+      rows = parsed.rows;
+
+      if (!headers.length) throw new Error('No headers detected. Ensure the first row contains column names.');
+
+      statusEl.textContent = `Loaded: ${file.name}`;
+      rowCountEl.textContent = String(rows.length);
+      colCountEl.textContent = String(headers.length);
+
+      renderColumns(headers);
+      initProfileSelect(headers);
+
+      summaryCard.style.display = '';
+      columnsCard.style.display = '';
+      allStatsCard.style.display = '';
+      profileCard.style.display = '';
+      dataCard.style.display = '';
+      recomputeBtn.disabled = false;
+
+      // Reset controls/state
+      tableSearchEl.value = '';
+      rowLimitEl.value = '0';
+      allStatsSort = { key: 'nullCount', dir: 'desc' };
+      dataSort = { key: null, dir: 'asc' };
+      updateDataSortLabel();
+
+      // Compute stats first (so inferred types are ready for sorting)
+      computeAllStats(() => {
+        applyAndRenderTable();
+      });
+    } catch (err) {
+      statusEl.textContent = 'Load failed';
+      showError(err?.message || String(err));
+      summaryCard.style.display = 'none';
+      columnsCard.style.display = 'none';
+      allStatsCard.style.display = 'none';
+      profileCard.style.display = 'none';
+      dataCard.style.display = 'none';
+      recomputeBtn.disabled = true;
+    }
+  });
+
+  recomputeBtn.addEventListener('click', () => {
+    if (!headers.length) return;
+    // Recompute stats and then re-render table if it is sorted on a column
+    computeAllStats(() => {
+      if (profileSelectEl.value) profileSelectEl.dispatchEvent(new Event('change'));
+      applyAndRenderTable();
+    });
+  });
+
+  profileSelectEl.addEventListener('change', () => {
+    const col = profileSelectEl.value;
+    if (!col) return;
+
+    profileStatusEl.textContent = 'Profiling…';
+    profileStatusEl.classList.remove('muted');
+
+    setTimeout(() => {
+      try {
+        const nullSet = getNullTokenSet();
+        const profile = profileOneColumn(col, rows, nullSet);
+        renderProfileKpis(col, profile);
+        renderTopValues(profile.topValues);
+        profileStatusEl.textContent = 'Done';
+      } catch (err) {
+        profileStatusEl.textContent = 'Error';
+        showError(err?.message || String(err));
+      }
+    }, 0);
+  });
+
+  tableSearchEl.addEventListener('input', debounce(() => applyAndRenderTable(), 150));
+  rowLimitEl.addEventListener('change', () => applyAndRenderTable());
+
+  function applyAndRenderTable() {
+    if (!headers.length) return;
+
+    const q = (tableSearchEl.value || '').trim().toLowerCase();
+    const limit = Number(rowLimitEl.value || '0');
+
+    tableStatusEl.textContent = 'Filtering…';
+    tableStatusEl.classList.remove('muted');
+
+    // Filter
+    let filtered = rows;
+    if (q.length > 0) {
+      filtered = rows.filter(r => {
+        for (const h of headers) {
+          const v = r[h];
+          if (v != null && String(v).toLowerCase().includes(q)) return true;
+        }
+        return false;
+      });
+    }
+
+    // Sort using inferred type (if enabled)
+    if (dataSort.key) {
+      filtered = stableSortByColumnWithInferredType(filtered, dataSort.key, dataSort.dir);
+    }
+
+    // Apply limit last (so you see top rows after sort)
+    if (limit > 0) filtered = filtered.slice(0, limit);
+
+    shownCountEl.textContent = String(filtered.length);
+    renderDataTableChunked(headers, filtered);
+  }
+
+  function stableSortByColumnWithInferredType(inputRows, colKey, dir) {
+    const direction = (dir === 'asc') ? 1 : -1;
+    const withIndex = inputRows.map((r, idx) => ({ r, idx }));
+    const nullSet = getNullTokenSet();
+
+    // If stats haven't been computed for some reason, fall back to text
+    const s = allStats.get(colKey);
+    const inferred = s ? (s.isNumeric ? 'num' : 'str') : 'str';
+
+    const getComparable = (rowObj) => {
+      const raw = rowObj.r[colKey];
+      if (isNullish(raw, nullSet)) return { kind: 'null', n: null, s: '' };
+
+      const str = String(raw).trim();
+
+      if (inferred === 'num') {
+        // Numeric column: parse; non-finite treated as null-ish-ish (bottom)
+        const n = Number(str);
+        if (!Number.isFinite(n)) return { kind: 'null', n: null, s: '' };
+        return { kind: 'num', n, s: '' };
+      }
+
+      // Text column
+      return { kind: 'str', n: null, s: str.toLowerCase() };
+    };
+
+    return withIndex.sort((a, b) => {
+      const A = getComparable(a);
+      const B = getComparable(b);
+
+      // Nulls always bottom
+      if (A.kind === 'null' && B.kind !== 'null') return 1;
+      if (A.kind !== 'null' && B.kind === 'null') return -1;
+
+      if (inferred === 'num') {
+        if (A.n !== B.n) return (A.n < B.n ? -1 : 1) * direction;
+      } else {
+        if (A.s !== B.s) return (A.s < B.s ? -1 : 1) * direction;
+      }
+
+      // Stable tie-breaker
+      return a.idx - b.idx;
+    }).map(x => x.r);
+  }
+
+  function renderDataTableChunked(headers, dataRows) {
+    const token = ++tableRenderToken;
+    dataWrapEl.innerHTML = '';
+
+    const table = document.createElement('table');
+
+    // Header with sortable columns (uses inferred type)
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    for (const h of headers) {
+      const th = document.createElement('th');
+      th.classList.add('sortable');
+
+      const isActive = dataSort.key === h;
+      const arrow = isActive ? (dataSort.dir === 'asc' ? '▲' : '▼') : '↕';
+
+      const typeTag = allStats.get(h)?.isNumeric ? ' (num)' : '';
+      const span = document.createElement('span');
+      span.className = 'hdr';
+      span.innerHTML = `<span>${escapeHtml(h)}${escapeHtml(typeTag)}</span><span class="arrow">${arrow}</span>`;
+      th.appendChild(span);
+
+      th.addEventListener('click', () => {
+        if (dataSort.key === h) {
+          dataSort.dir = (dataSort.dir === 'asc') ? 'desc' : 'asc';
+        } else {
+          dataSort.key = h;
+          // Default sort direction: numeric desc often more useful; text asc
+          dataSort.dir = (allStats.get(h)?.isNumeric) ? 'desc' : 'asc';
+        }
+        updateDataSortLabel();
+        applyAndRenderTable();
+      });
+
+      trh.appendChild(th);
+    }
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+    dataWrapEl.appendChild(table);
+
+    // Chunked row rendering for responsiveness
+    const CHUNK = 300;
+    let i = 0;
+    tableStatusEl.textContent = 'Rendering…';
+
+    const pump = () => {
+      if (token !== tableRenderToken) return;
+      const end = Math.min(i + CHUNK, dataRows.length);
+
+      for (; i < end; i++) {
+        const r = dataRows[i];
+        const tr = document.createElement('tr');
+        for (const h of headers) {
+          const td = document.createElement('td');
+          td.textContent = r[h] == null ? '' : String(r[h]);
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+
+      if (i < dataRows.length) {
+        requestAnimationFrame(pump);
+      } else {
+        tableStatusEl.textContent = 'Rendered';
+      }
+    };
+
+    requestAnimationFrame(pump);
+  }
+
+  function updateDataSortLabel() {
+    if (!dataSort.key) {
+      dataSortLabelEl.textContent = 'none';
+      return;
+    }
+    const t = allStats.get(dataSort.key)?.isNumeric ? 'num' : 'text';
+    dataSortLabelEl.textContent = `${dataSort.key} (${t}, ${dataSort.dir})`;
+  }
+
+  // computeAllStats now accepts a callback so we can render after types exist
+  function computeAllStats(done) {
+    statsStatusEl.textContent = 'Computing…';
+    statsStatusEl.classList.remove('muted');
+    allStatsWrapEl.innerHTML = '';
+
+    setTimeout(() => {
+      try {
+        const nullSet = getNullTokenSet();
+        allStats = new Map();
+        for (const h of headers) allStats.set(h, summarizeColumn(h, rows, nullSet));
+        renderAllStatsTable(headers, allStats);
+        statsStatusEl.textContent = 'Computed';
+        if (typeof done === 'function') done();
+      } catch (err) {
+        statsStatusEl.textContent = 'Error';
+        showError(err?.message || String(err));
+      }
+    }, 0);
+  }
+
+  function showError(msg) {
+    messageEl.style.display = '';
+    messageEl.textContent = msg;
+  }
+  function clearError() {
+    messageEl.style.display = 'none';
+    messageEl.textContent = '';
+  }
+
+  function renderColumns(headers) {
+    columnsListEl.innerHTML = '';
+    for (const h of headers) {
+      const li = document.createElement('li');
+      li.textContent = h;
+      columnsListEl.appendChild(li);
+    }
+  }
+
+  function initProfileSelect(headers) {
+    profileSelectEl.innerHTML = '';
+    const opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = '-- choose a column --';
+    profileSelectEl.appendChild(opt0);
+
+    for (const h of headers) {
+      const opt = document.createElement('option');
+      opt.value = h;
+      opt.textContent = h;
+      profileSelectEl.appendChild(opt);
+    }
+    profileSelectEl.value = '';
+    profileStatusEl.textContent = 'Select a column';
+    profileStatusEl.classList.add('muted');
+    profileKpisEl.innerHTML = '';
+    topValuesWrapEl.innerHTML = '';
+  }
+
+  function getNullTokenSet() {
+    const raw = nullTokensInput.value || '';
+    const tokens = raw.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    return new Set(tokens);
+  }
+
+  function isNullish(value, nullSet) {
+    if (value == null) return true;
+    const s = String(value).trim();
+    if (s === '') return true;
+    return nullSet.has(s);
+  }
+
+  // --------- Stats (All Column Statistics) ----------
+  function summarizeColumn(column, rows, nullSet) {
+    let nullCount = 0;
+    let nonNullCount = 0;
+    const distinct = new Set();
+
+    let numericCount = 0;
+    let numericSum = 0;
+    let numericMin = Infinity;
+    let numericMax = -Infinity;
+
+    for (const r of rows) {
+      const raw = r[column];
+      if (isNullish(raw, nullSet)) { nullCount++; continue; }
+
+      const s = String(raw).trim();
+      nonNullCount++;
+      distinct.add(s);
+
+      const n = Number(s);
+      if (Number.isFinite(n)) {
+        numericCount++;
+        numericSum += n;
+        if (n < numericMin) numericMin = n;
+        if (n > numericMax) numericMax = n;
+      }
+    }
+
+    const rowCount = rows.length;
+    const distinctCount = distinct.size;
+    const numericRatio = nonNullCount === 0 ? 0 : (numericCount / nonNullCount);
+    const isNumeric = numericRatio >= 0.95 && nonNullCount > 0;
+    const mean = (isNumeric && numericCount > 0) ? (numericSum / numericCount) : null;
+
+    return {
+      column,
+      rowCount,
+      nullCount,
+      nonNullCount,
+      nullPct: rowCount ? (nullCount / rowCount) : 0,
+      distinctCount,
+      isNumeric,
+      numericRatio,
+      min: isNumeric ? (numericMin === Infinity ? null : numericMin) : null,
+      max: isNumeric ? (numericMax === -Infinity ? null : numericMax) : null,
+      mean
+    };
+  }
+
+  const ALL_STATS_COLS = [
+    { key: 'column', label: 'Column', type: 'text' },
+    { key: 'type', label: 'Type', type: 'text', derive: (s) => s.isNumeric ? 'Numeric' : 'Text' },
+    { key: 'nullCount', label: 'Null', type: 'number', derive: (s) => s.nullCount },
+    { key: 'nullPct', label: 'Null %', type: 'number', derive: (s) => s.nullPct },
+    { key: 'distinctCount', label: 'Distinct', type: 'number', derive: (s) => s.distinctCount },
+    { key: 'numericRatio', label: 'Numeric %', type: 'number', derive: (s) => s.numericRatio },
+    { key: 'min', label: 'Min', type: 'number', derive: (s) => s.min },
+    { key: 'max', label: 'Max', type: 'number', derive: (s) => s.max },
+    { key: 'mean', label: 'Mean', type: 'number', derive: (s) => s.mean },
+  ];
+
+  function renderAllStatsTable(headers, statsMap) {
+    const baseRows = headers.map((h, idx) => ({ _index: idx, _col: h, s: statsMap.get(h) }));
+    const sortedRows = sortStatsRows(baseRows);
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+
+    for (const col of ALL_STATS_COLS) {
+      const th = document.createElement('th');
+      th.classList.add('sortable');
+
+      const isActive = allStatsSort.key === col.key;
+      const arrow = isActive ? (allStatsSort.dir === 'asc' ? '▲' : '▼') : '↕';
+
+      const span = document.createElement('span');
+      span.className = 'hdr';
+      span.innerHTML = `<span>${escapeHtml(col.label)}</span><span class="arrow">${arrow}</span>`;
+      th.appendChild(span);
+
+      th.addEventListener('click', () => {
+        if (allStatsSort.key === col.key) {
+          allStatsSort.dir = (allStatsSort.dir === 'asc') ? 'desc' : 'asc';
+        } else {
+          allStatsSort.key = col.key;
+          allStatsSort.dir = (col.type === 'number') ? 'desc' : 'asc';
+        }
+        renderAllStatsTable(headers, statsMap);
+      });
+
+      trh.appendChild(th);
+    }
+
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const r of sortedRows) {
+      const tr = document.createElement('tr');
+
+      for (const col of ALL_STATS_COLS) {
+        const td = document.createElement('td');
+
+        if (col.key === 'column') {
+          const a = document.createElement('a');
+          a.href = '#profileCard';
+          a.textContent = r._col;
+          a.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            profileSelectEl.value = r._col;
+            profileSelectEl.dispatchEvent(new Event('change'));
+            document.getElementById('profileCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+          td.appendChild(a);
+        } else {
+          const v = col.derive ? col.derive(r.s) : r.s[col.key];
+          td.textContent = formatStatsCell(col.key, v, r.s);
+        }
+
+        tr.appendChild(td);
+      }
+
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    allStatsWrapEl.innerHTML = '';
+    allStatsWrapEl.appendChild(table);
+  }
+
+  function sortStatsRows(rows) {
+    const def = ALL_STATS_COLS.find(c => c.key === allStatsSort.key) || ALL_STATS_COLS[0];
+    const dir = allStatsSort.dir === 'asc' ? 1 : -1;
+
+    const getVal = (row) => {
+      if (def.key === 'column') return row._col;
+      if (def.key === 'type') return row.s.isNumeric ? 'Numeric' : 'Text';
+      return def.derive ? def.derive(row.s) : row.s[def.key];
+    };
+
+    return rows.slice().sort((a, b) => {
+      const va = getVal(a);
+      const vb = getVal(b);
+
+      const aNull = (va == null || va === '');
+      const bNull = (vb == null || vb === '');
+
+      if (aNull && !bNull) return 1;
+      if (!aNull && bNull) return -1;
+
+      if (def.type === 'number') {
+        const na = Number(va);
+        const nb = Number(vb);
+        if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return (na < nb ? -1 : 1) * dir;
+      } else {
+        const sa = String(va).toLowerCase();
+        const sb = String(vb).toLowerCase();
+        if (sa !== sb) return (sa < sb ? -1 : 1) * dir;
+      }
+
+      return a._index - b._index;
+    });
+  }
+
+  function formatStatsCell(key, v, s) {
+    if (key === 'nullPct' || key === 'numericRatio') return formatPct(v);
+    if (key === 'min' || key === 'max' || key === 'mean') return (s.isNumeric ? formatNumber(v) : '');
+    if (typeof v === 'number') return formatInt(v);
+    return v == null ? '' : String(v);
+  }
+
+  // --------- Column profile ----------
+  function profileOneColumn(column, rows, nullSet) {
+    const freq = new Map();
+    const distinct = new Set();
+    let nullCount = 0;
+    let nonNullCount = 0;
+
+    let numericCount = 0;
+    let numericSum = 0;
+    let numericMin = Infinity;
+    let numericMax = -Infinity;
+
+    for (const r of rows) {
+      const raw = r[column];
+      if (isNullish(raw, nullSet)) { nullCount++; continue; }
+
+      const s = String(raw).trim();
+      nonNullCount++;
+      distinct.add(s);
+      freq.set(s, (freq.get(s) || 0) + 1);
+
+      const n = Number(s);
+      if (Number.isFinite(n)) {
+        numericCount++;
+        numericSum += n;
+        if (n < numericMin) numericMin = n;
+        if (n > numericMax) numericMax = n;
+      }
+    }
+
+    const numericRatio = nonNullCount === 0 ? 0 : (numericCount / nonNullCount);
+    const isNumeric = numericRatio >= 0.95 && nonNullCount > 0;
+    const mean = (isNumeric && numericCount > 0) ? (numericSum / numericCount) : null;
+
+    const topValues = Array.from(freq.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 25)
+      .map(([value, count]) => ({ value, count, pct: nonNullCount ? (count / nonNullCount) : 0 }));
+
+    return {
+      rowCount: rows.length,
+      nullCount,
+      nonNullCount,
+      distinctCount: distinct.size,
+      isNumeric,
+      numericRatio,
+      numeric: isNumeric ? {
+        count: numericCount,
+        min: numericMin === Infinity ? null : numericMin,
+        max: numericMax === -Infinity ? null : numericMax,
+        mean
+      } : null,
+      topValues
+    };
+  }
+
+  function renderProfileKpis(column, p) {
+    profileKpisEl.innerHTML = '';
+    const items = [];
+
+    items.push(['Column', column]);
+    items.push(['Rows', formatInt(p.rowCount)]);
+    items.push(['Null / empty', `${formatInt(p.nullCount)} (${formatPct(p.nullCount / Math.max(1, p.rowCount))})`]);
+    items.push(['Non-null', `${formatInt(p.nonNullCount)} (${formatPct(p.nonNullCount / Math.max(1, p.rowCount))})`]);
+    items.push(['Distinct (non-null)', formatInt(p.distinctCount)]);
+    items.push(['Inferred type', p.isNumeric ? 'Numeric' : 'Text']);
+    items.push(['Numeric parse rate', formatPct(p.numericRatio)]);
+
+    if (p.isNumeric && p.numeric) {
+      items.push(['Min', formatNumber(p.numeric.min)]);
+      items.push(['Max', formatNumber(p.numeric.max)]);
+      items.push(['Mean', formatNumber(p.numeric.mean)]);
+    }
+
+    for (const [k, v] of items) {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML = `<b>${escapeHtml(k)}:</b> ${escapeHtml(String(v))}`;
+      profileKpisEl.appendChild(div);
+    }
+  }
+
+  function renderTopValues(topValues) {
+    topValuesWrapEl.innerHTML = '';
+    if (!topValues || topValues.length === 0) {
+      topValuesWrapEl.innerHTML = '<div class="muted" style="margin-top:8px;">No non-null values found.</div>';
+      return;
+    }
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    thead.innerHTML = `<tr><th>Value</th><th>Count</th><th>% of non-null</th></tr>`;
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const tv of topValues) {
+      const tr = document.createElement('tr');
+      const tdVal = document.createElement('td');
+      tdVal.textContent = tv.value;
+      const tdCount = document.createElement('td');
+      tdCount.textContent = formatInt(tv.count);
+      const tdPct = document.createElement('td');
+      tdPct.textContent = formatPct(tv.pct);
+      tr.appendChild(tdVal);
+      tr.appendChild(tdCount);
+      tr.appendChild(tdPct);
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    topValuesWrapEl.appendChild(table);
+  }
+
+  // --------- CSV parsing ----------
+  function detectDelimiter(sampleText) {
+    const candidates = [',','\t',';','|'];
+    const lines = sampleText.split(/\r?\n/).filter(l => l.trim().length > 0).slice(0, 10);
+    if (lines.length === 0) return ',';
+
+    let best = { delim: ',', score: -Infinity };
+    for (const d of candidates) {
+      const counts = lines.map(l => countDelimsOutsideQuotes(l, d));
+      const avg = counts.reduce((a,b)=>a+b,0) / counts.length;
+      const variance = counts.reduce((a,c)=>a+Math.pow(c-avg,2),0) / counts.length;
+      const score = (avg * 10) - variance;
+      if (score > best.score) best = { delim: d, score };
+    }
+    return best.delim;
+  }
+
+  function countDelimsOutsideQuotes(line, delim) {
+    let inQuotes = false;
+    let count = 0;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i+1] === '"') { i++; continue; }
+        inQuotes = !inQuotes;
+      } else if (!inQuotes && ch === delim) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  function parseCsv(text, delim) {
+    const rows = [];
+    let i = 0;
+    const len = text.length;
+
+    const readField = () => {
+      let field = '';
+
+      if (text[i] === '"') {
+        i++; // opening quote
+        while (i < len) {
+          const ch = text[i];
+          if (ch === '"') {
+            if (text[i+1] === '"') { field += '"'; i += 2; continue; }
+            i++; // closing quote
+            break;
+          } else {
+            field += ch;
+            i++;
+          }
+        }
+      }
+
+      while (i < len) {
+        const ch = text[i];
+        if (ch === delim) break;
+        if (ch === '\n' || ch === '\r') break;
+        field += ch;
+        i++;
+      }
+
+      return field;
+    };
+
+    const readRow = () => {
+      const fields = [];
+      while (i < len) {
+        if (i === 0 && text.charCodeAt(0) === 0xFEFF) i++; // BOM
+        const field = readField();
+        fields.push(field);
+
+        if (i >= len) break;
+
+        const ch = text[i];
+        if (ch === delim) { i++; continue; }
+
+        if (ch === '\r') i++;
+        if (text[i] === '\n') i++;
+        break;
+      }
+      return fields;
+    };
+
+    const headerFields = readRow().map(h => h.trim());
+    const headers = headerFields.filter(h => h.length > 0);
+
+    while (i < len) {
+      if (text[i] === '\n' || text[i] === '\r') {
+        if (text[i] === '\r') i++;
+        if (text[i] === '\n') i++;
+        continue;
+      }
+
+      const fields = readRow();
+      if (fields.every(f => f.trim().length === 0)) continue;
+
+      const obj = {};
+      for (let c = 0; c < headers.length; c++) obj[headers[c]] = fields[c] ?? '';
+      rows.push(obj);
+    }
+
+    return { headers, rows };
+  }
+
+  // --------- Formatting + utils ----------
+  function formatInt(n) { return Number.isFinite(n) ? n.toLocaleString() : ''; }
+  function formatPct(x) { return Number.isFinite(x) ? (x * 100).toFixed(1) + '%' : ''; }
+  function formatNumber(n) {
+    if (n == null || !Number.isFinite(n)) return '';
+    const abs = Math.abs(n);
+    if (abs >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, ch => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[ch]));
+  }
+  function debounce(fn, ms) {
+    let t = null;
+    return (...args) => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+})();
+</script>
+</body>
+</html>

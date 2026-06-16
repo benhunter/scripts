@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>JSON Explorer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #38bdf8;
+      --border: #374151;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --code: #020617;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: #020617;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.35rem;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 0.75rem 1rem;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--border);
+      font-weight: 650;
+    }
+
+    .panel-body {
+      padding: 1rem;
+    }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      text-align: center;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+
+    .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    input[type="search"] {
+      width: 100%;
+      background: var(--code);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.65rem 0.75rem;
+      font-size: 0.95rem;
+    }
+
+    button {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .tab-button.active {
+      background: var(--accent);
+      color: #00111c;
+      border-color: var(--accent);
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .metric {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 0.65rem;
+      padding: 0.85rem;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .metric .value {
+      margin-top: 0.25rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .tree {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    details {
+      margin-left: 1rem;
+    }
+
+    details > summary {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .leaf {
+      margin-left: 1.6rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .key {
+      color: #93c5fd;
+    }
+
+    .type {
+      color: var(--muted);
+    }
+
+    .string {
+      color: #86efac;
+    }
+
+    .number {
+      color: #facc15;
+    }
+
+    .boolean {
+      color: #fca5a5;
+    }
+
+    .null {
+      color: #c084fc;
+    }
+
+    .path {
+      color: #7dd3fc;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 0.65rem;
+      max-height: 70vh;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--border);
+      padding: 0.55rem 0.65rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: var(--panel-2);
+      z-index: 2;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    td {
+      background: var(--panel);
+    }
+
+    tr:hover td {
+      background: #172033;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .error {
+      color: var(--bad);
+      white-space: pre-wrap;
+    }
+
+    .controls {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .small {
+      font-size: 0.82rem;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 0.1rem 0.45rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      margin-left: 0.35rem;
+    }
+
+    .array-table-selector {
+      margin-bottom: 0.75rem;
+    }
+
+    select {
+      background: var(--code);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.45rem 0.55rem;
+      max-width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>JSON Explorer</h1>
+    <p>Load a JSON file to inspect structure, paths, values, types, and tabular arrays.</p>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <div class="panel-header">Input</div>
+      <div class="panel-body">
+        <label id="dropZone" class="drop-zone">
+          <strong>Drop JSON file here</strong>
+          <br />
+          <span>or click to choose a file</span>
+          <input id="fileInput" type="file" accept=".json,application/json" />
+        </label>
+
+        <div class="controls">
+          <input id="searchInput" type="search" placeholder="Search key, path, or value..." disabled />
+
+          <button id="expandAllBtn" disabled>Expand all tree nodes</button>
+          <button id="collapseAllBtn" disabled>Collapse all tree nodes</button>
+          <button id="downloadFlatBtn" disabled>Download flattened CSV</button>
+        </div>
+
+        <div id="status" class="small muted" style="margin-top: 1rem;">
+          No file loaded.
+        </div>
+      </div>
+    </aside>
+
+    <section class="panel">
+      <div class="panel-header">Explorer</div>
+      <div class="panel-body">
+        <div class="tabs">
+          <button class="tab-button active" data-tab="summaryView">Summary</button>
+          <button class="tab-button" data-tab="treeView">Tree</button>
+          <button class="tab-button" data-tab="pathsView">Flattened Paths</button>
+          <button class="tab-button" data-tab="tableView">Array Tables</button>
+          <button class="tab-button" data-tab="rawView">Raw</button>
+        </div>
+
+        <div id="summaryView" class="view active">
+          <div id="summaryContent" class="muted">
+            Load a JSON file to begin.
+          </div>
+        </div>
+
+        <div id="treeView" class="view">
+          <div id="treeContent" class="tree muted">
+            No JSON loaded.
+          </div>
+        </div>
+
+        <div id="pathsView" class="view">
+          <div id="pathsContent" class="muted">
+            No JSON loaded.
+          </div>
+        </div>
+
+        <div id="tableView" class="view">
+          <div id="tableContent" class="muted">
+            No JSON loaded.
+          </div>
+        </div>
+
+        <div id="rawView" class="view">
+          <pre id="rawContent" class="muted" style="overflow:auto; max-height:70vh;">No JSON loaded.</pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      fileName: null,
+      json: null,
+      flatRows: [],
+      filteredRows: [],
+      arrays: [],
+      search: "",
+      sort: {
+        paths: { column: "path", direction: "asc" },
+        array: { column: null, direction: "asc" }
+      }
+    };
+
+    const els = {
+      fileInput: document.getElementById("fileInput"),
+      dropZone: document.getElementById("dropZone"),
+      status: document.getElementById("status"),
+      searchInput: document.getElementById("searchInput"),
+      expandAllBtn: document.getElementById("expandAllBtn"),
+      collapseAllBtn: document.getElementById("collapseAllBtn"),
+      downloadFlatBtn: document.getElementById("downloadFlatBtn"),
+      summaryContent: document.getElementById("summaryContent"),
+      treeContent: document.getElementById("treeContent"),
+      pathsContent: document.getElementById("pathsContent"),
+      tableContent: document.getElementById("tableContent"),
+      rawContent: document.getElementById("rawContent")
+    };
+
+    els.fileInput.addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (file) loadFile(file);
+    });
+
+    els.dropZone.addEventListener("dragover", event => {
+      event.preventDefault();
+      els.dropZone.classList.add("dragover");
+    });
+
+    els.dropZone.addEventListener("dragleave", () => {
+      els.dropZone.classList.remove("dragover");
+    });
+
+    els.dropZone.addEventListener("drop", event => {
+      event.preventDefault();
+      els.dropZone.classList.remove("dragover");
+
+      const file = event.dataTransfer.files[0];
+      if (file) loadFile(file);
+    });
+
+    document.querySelectorAll(".tab-button").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+
+        button.classList.add("active");
+        document.getElementById(button.dataset.tab).classList.add("active");
+      });
+    });
+
+    els.searchInput.addEventListener("input", () => {
+      state.search = els.searchInput.value.trim().toLowerCase();
+      applySearch();
+      renderAll();
+    });
+
+    els.expandAllBtn.addEventListener("click", () => {
+      els.treeContent.querySelectorAll("details").forEach(d => d.open = true);
+    });
+
+    els.collapseAllBtn.addEventListener("click", () => {
+      els.treeContent.querySelectorAll("details").forEach(d => d.open = false);
+    });
+
+    els.downloadFlatBtn.addEventListener("click", () => {
+      const csv = rowsToCsv(state.filteredRows);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${state.fileName || "json"}-flattened.csv`;
+      a.click();
+
+      URL.revokeObjectURL(url);
+    });
+
+    async function loadFile(file) {
+      state.fileName = file.name;
+      els.status.textContent = `Loading ${file.name}...`;
+
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+
+        state.json = parsed;
+        state.flatRows = flattenJson(parsed);
+        state.filteredRows = state.flatRows;
+        state.arrays = findArrays(parsed);
+        state.search = "";
+
+        els.searchInput.value = "";
+        els.searchInput.disabled = false;
+        els.expandAllBtn.disabled = false;
+        els.collapseAllBtn.disabled = false;
+        els.downloadFlatBtn.disabled = false;
+
+        els.status.textContent = `Loaded ${file.name}. ${state.flatRows.length.toLocaleString()} flattened paths.`;
+
+        renderAll();
+      } catch (err) {
+        state.json = null;
+        state.flatRows = [];
+        state.filteredRows = [];
+        state.arrays = [];
+
+        els.status.innerHTML = `<span class="error">Failed to parse JSON: ${escapeHtml(err.message)}</span>`;
+
+        els.summaryContent.innerHTML = `<div class="error">${escapeHtml(err.stack || err.message)}</div>`;
+        els.treeContent.textContent = "No valid JSON loaded.";
+        els.pathsContent.textContent = "No valid JSON loaded.";
+        els.tableContent.textContent = "No valid JSON loaded.";
+        els.rawContent.textContent = "No valid JSON loaded.";
+      }
+    }
+
+    function renderAll() {
+      if (state.json === null) return;
+
+      renderSummary();
+      renderTree();
+      renderPathsTable();
+      renderArrayTables();
+      els.rawContent.textContent = JSON.stringify(state.json, null, 2);
+    }
+
+    function applySearch() {
+      if (!state.search) {
+        state.filteredRows = state.flatRows;
+        return;
+      }
+
+      state.filteredRows = state.flatRows.filter(row => {
+        return [
+          row.path,
+          row.key,
+          row.type,
+          row.value
+        ].some(value => String(value ?? "").toLowerCase().includes(state.search));
+      });
+    }
+
+    function getType(value) {
+      if (value === null) return "null";
+      if (Array.isArray(value)) return "array";
+      return typeof value;
+    }
+
+    function isPrimitive(value) {
+      const type = getType(value);
+      return ["string", "number", "boolean", "null", "undefined"].includes(type);
+    }
+
+    function pathJoin(parent, key) {
+      if (parent === "$") {
+        return typeof key === "number" ? `$[${key}]` : `$.${key}`;
+      }
+
+      return typeof key === "number" ? `${parent}[${key}]` : `${parent}.${key}`;
+    }
+
+    function flattenJson(value, path = "$", key = "$", rows = []) {
+      const type = getType(value);
+
+      if (isPrimitive(value)) {
+        rows.push({
+          path,
+          key,
+          type,
+          value: value === null ? "null" : String(value),
+          length: value === null || value === undefined ? 0 : String(value).length
+        });
+        return rows;
+      }
+
+      if (Array.isArray(value)) {
+        rows.push({
+          path,
+          key,
+          type: "array",
+          value: `[${value.length} items]`,
+          length: value.length
+        });
+
+        value.forEach((item, index) => {
+          flattenJson(item, pathJoin(path, index), index, rows);
+        });
+
+        return rows;
+      }
+
+      if (typeof value === "object") {
+        const keys = Object.keys(value);
+
+        rows.push({
+          path,
+          key,
+          type: "object",
+          value: `{${keys.length} keys}`,
+          length: keys.length
+        });
+
+        for (const childKey of keys) {
+          flattenJson(value[childKey], pathJoin(path, childKey), childKey, rows);
+        }
+
+        return rows;
+      }
+
+      rows.push({
+        path,
+        key,
+        type,
+        value: String(value),
+        length: String(value).length
+      });
+
+      return rows;
+    }
+
+    function findArrays(value, path = "$", arrays = []) {
+      if (Array.isArray(value)) {
+        arrays.push({
+          path,
+          length: value.length,
+          value,
+          shape: describeArrayShape(value)
+        });
+
+        value.forEach((item, index) => {
+          findArrays(item, pathJoin(path, index), arrays);
+        });
+
+        return arrays;
+      }
+
+      if (value && typeof value === "object") {
+        for (const [key, child] of Object.entries(value)) {
+          findArrays(child, pathJoin(path, key), arrays);
+        }
+      }
+
+      return arrays;
+    }
+
+    function describeArrayShape(array) {
+      if (array.length === 0) return "empty array";
+
+      const types = new Map();
+
+      for (const item of array) {
+        const type = getType(item);
+        types.set(type, (types.get(type) || 0) + 1);
+      }
+
+      const typeSummary = [...types.entries()]
+        .map(([type, count]) => `${type}: ${count}`)
+        .join(", ");
+
+      if (array.every(item => item && typeof item === "object" && !Array.isArray(item))) {
+        const keys = new Set();
+        for (const item of array) {
+          Object.keys(item).forEach(key => keys.add(key));
+        }
+        return `array of objects, ${keys.size} unique keys`;
+      }
+
+      return typeSummary;
+    }
+
+    function renderSummary() {
+      const stats = buildStats(state.json, state.flatRows);
+
+      els.summaryContent.innerHTML = `
+        <div class="summary-grid">
+          ${metric("File", state.fileName || "Loaded JSON")}
+          ${metric("Root type", getType(state.json))}
+          ${metric("Flattened paths", state.flatRows.length.toLocaleString())}
+          ${metric("Search matches", state.filteredRows.length.toLocaleString())}
+          ${metric("Objects", stats.objects.toLocaleString())}
+          ${metric("Arrays", stats.arrays.toLocaleString())}
+          ${metric("Primitive values", stats.primitives.toLocaleString())}
+          ${metric("Max depth", stats.maxDepth.toLocaleString())}
+        </div>
+
+        <h3>Type counts</h3>
+        ${renderSimpleTable(
+          ["Type", "Count"],
+          Object.entries(stats.types).sort((a, b) => b[1] - a[1])
+        )}
+
+        <h3>Detected arrays</h3>
+        ${
+          state.arrays.length
+            ? renderSimpleTable(
+                ["Path", "Length", "Shape"],
+                state.arrays.map(a => [
+                  `<span class="path">${escapeHtml(a.path)}</span>`,
+                  a.length.toLocaleString(),
+                  escapeHtml(a.shape)
+                ])
+              )
+            : `<p class="muted">No arrays detected.</p>`
+        }
+      `;
+    }
+
+    function buildStats(root, rows) {
+      const stats = {
+        types: {},
+        objects: 0,
+        arrays: 0,
+        primitives: 0,
+        maxDepth: 0
+      };
+
+      for (const row of rows) {
+        stats.types[row.type] = (stats.types[row.type] || 0) + 1;
+
+        if (row.type === "object") stats.objects++;
+        else if (row.type === "array") stats.arrays++;
+        else stats.primitives++;
+
+        const depth = row.path
+          .replace(/\[(\d+)\]/g, ".$1")
+          .split(".")
+          .length - 1;
+
+        stats.maxDepth = Math.max(stats.maxDepth, depth);
+      }
+
+      return stats;
+    }
+
+    function metric(label, value) {
+      return `
+        <div class="metric">
+          <div class="label">${escapeHtml(label)}</div>
+          <div class="value">${escapeHtml(String(value))}</div>
+        </div>
+      `;
+    }
+
+    function renderTree() {
+      els.treeContent.innerHTML = renderTreeNode(state.json, "$", "$");
+    }
+
+    function renderTreeNode(value, key, path) {
+      const type = getType(value);
+
+      if (isPrimitive(value)) {
+        return `
+          <div class="leaf" data-path="${escapeHtml(path)}">
+            <span class="key">${escapeHtml(String(key))}</span>:
+            ${formatValue(value)}
+            <span class="type">(${type})</span>
+          </div>
+        `;
+      }
+
+      if (Array.isArray(value)) {
+        const children = value
+          .map((item, index) => renderTreeNode(item, index, pathJoin(path, index)))
+          .join("");
+
+        return `
+          <details open>
+            <summary>
+              <span class="key">${escapeHtml(String(key))}</span>
+              <span class="type">array</span>
+              <span class="pill">${value.length} items</span>
+              <span class="path">${escapeHtml(path)}</span>
+            </summary>
+            ${children}
+          </details>
+        `;
+      }
+
+      if (value && typeof value === "object") {
+        const keys = Object.keys(value);
+        const children = keys
+          .map(childKey => renderTreeNode(value[childKey], childKey, pathJoin(path, childKey)))
+          .join("");
+
+        return `
+          <details open>
+            <summary>
+              <span class="key">${escapeHtml(String(key))}</span>
+              <span class="type">object</span>
+              <span class="pill">${keys.length} keys</span>
+              <span class="path">${escapeHtml(path)}</span>
+            </summary>
+            ${children}
+          </details>
+        `;
+      }
+
+      return `
+        <div class="leaf">
+          <span class="key">${escapeHtml(String(key))}</span>:
+          ${escapeHtml(String(value))}
+          <span class="type">(${type})</span>
+        </div>
+      `;
+    }
+
+    function formatValue(value) {
+      const type = getType(value);
+
+      if (type === "string") {
+        return `<span class="string">"${escapeHtml(value)}"</span>`;
+      }
+
+      if (type === "number") {
+        return `<span class="number">${escapeHtml(String(value))}</span>`;
+      }
+
+      if (type === "boolean") {
+        return `<span class="boolean">${escapeHtml(String(value))}</span>`;
+      }
+
+      if (type === "null") {
+        return `<span class="null">null</span>`;
+      }
+
+      return escapeHtml(String(value));
+    }
+
+    function renderPathsTable() {
+      const rows = sortRows(
+        [...state.filteredRows],
+        state.sort.paths.column,
+        state.sort.paths.direction
+      );
+
+      els.pathsContent.innerHTML = `
+        <p class="muted small">
+          Showing ${rows.length.toLocaleString()} of ${state.flatRows.length.toLocaleString()} paths.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                ${sortableHeader("path", "Path", "paths")}
+                ${sortableHeader("key", "Key", "paths")}
+                ${sortableHeader("type", "Type", "paths")}
+                ${sortableHeader("value", "Value", "paths")}
+                ${sortableHeader("length", "Length", "paths")}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(row => `
+                <tr>
+                  <td class="path">${escapeHtml(row.path)}</td>
+                  <td>${escapeHtml(String(row.key))}</td>
+                  <td>${escapeHtml(row.type)}</td>
+                  <td>${escapeHtml(row.value)}</td>
+                  <td>${escapeHtml(String(row.length))}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      els.pathsContent.querySelectorAll("th[data-sort]").forEach(th => {
+        th.addEventListener("click", () => {
+          setSort("paths", th.dataset.sort);
+          renderPathsTable();
+        });
+      });
+    }
+
+    function renderArrayTables() {
+      const tableCandidates = state.arrays.filter(arrayInfo =>
+        arrayInfo.value.length > 0 &&
+        arrayInfo.value.every(item => item && typeof item === "object" && !Array.isArray(item))
+      );
+
+      if (tableCandidates.length === 0) {
+        els.tableContent.innerHTML = `<p class="muted">No arrays of objects found.</p>`;
+        return;
+      }
+
+      const selectedPath = document.getElementById("arraySelector")?.value || tableCandidates[0].path;
+      const selected = tableCandidates.find(a => a.path === selectedPath) || tableCandidates[0];
+
+      const columns = collectObjectColumns(selected.value);
+      const rows = selected.value.map((item, index) => {
+        const row = { "#": index };
+        for (const col of columns) {
+          row[col] = item[col];
+        }
+        return row;
+      });
+
+      const sortColumn = state.sort.array.column || "#";
+      const sortedRows = sortRows(rows, sortColumn, state.sort.array.direction);
+
+      els.tableContent.innerHTML = `
+        <div class="array-table-selector">
+          <label>
+            Array:
+            <select id="arraySelector">
+              ${tableCandidates.map(candidate => `
+                <option value="${escapeHtml(candidate.path)}" ${candidate.path === selected.path ? "selected" : ""}>
+                  ${escapeHtml(candidate.path)} — ${candidate.length} rows
+                </option>
+              `).join("")}
+            </select>
+          </label>
+        </div>
+
+        <p class="muted small">
+          ${selected.value.length.toLocaleString()} rows, ${columns.length.toLocaleString()} columns.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                ${sortableHeader("#", "#", "array")}
+                ${columns.map(col => sortableHeader(col, col, "array")).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${sortedRows.map(row => `
+                <tr>
+                  <td>${escapeHtml(String(row["#"]))}</td>
+                  ${columns.map(col => `<td>${escapeHtml(formatCell(row[col]))}</td>`).join("")}
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      document.getElementById("arraySelector").addEventListener("change", event => {
+        state.sort.array = { column: "#", direction: "asc" };
+        renderArrayTables();
+      });
+
+      els.tableContent.querySelectorAll("th[data-sort]").forEach(th => {
+        th.addEventListener("click", () => {
+          setSort("array", th.dataset.sort);
+          renderArrayTables();
+        });
+      });
+    }
+
+    function collectObjectColumns(items) {
+      const cols = new Set();
+
+      for (const item of items) {
+        Object.keys(item).forEach(key => cols.add(key));
+      }
+
+      return [...cols].sort();
+    }
+
+    function formatCell(value) {
+      if (value === undefined) return "";
+      if (value === null) return "null";
+
+      if (typeof value === "object") {
+        return JSON.stringify(value);
+      }
+
+      return String(value);
+    }
+
+    function sortableHeader(column, label, scope) {
+      const sort = state.sort[scope];
+      const indicator =
+        sort.column === column
+          ? sort.direction === "asc"
+            ? " ▲"
+            : " ▼"
+          : "";
+
+      return `<th data-sort="${escapeHtml(column)}">${escapeHtml(label)}${indicator}</th>`;
+    }
+
+    function setSort(scope, column) {
+      const sort = state.sort[scope];
+
+      if (sort.column === column) {
+        sort.direction = sort.direction === "asc" ? "desc" : "asc";
+      } else {
+        sort.column = column;
+        sort.direction = "asc";
+      }
+    }
+
+    function sortRows(rows, column, direction) {
+      const factor = direction === "asc" ? 1 : -1;
+
+      return rows.sort((a, b) => {
+        const av = a[column];
+        const bv = b[column];
+
+        if (typeof av === "number" && typeof bv === "number") {
+          return (av - bv) * factor;
+        }
+
+        const an = Number(av);
+        const bn = Number(bv);
+
+        if (!Number.isNaN(an) && !Number.isNaN(bn)) {
+          return (an - bn) * factor;
+        }
+
+        return String(av ?? "").localeCompare(String(bv ?? ""), undefined, {
+          numeric: true,
+          sensitivity: "base"
+        }) * factor;
+      });
+    }
+
+    function renderSimpleTable(headers, rows) {
+      return `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr>
+            </thead>
+            <tbody>
+              ${rows.map(row => `
+                <tr>
+                  ${row.map(cell => `<td>${cell}</td>`).join("")}
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function rowsToCsv(rows) {
+      const headers = ["path", "key", "type", "value", "length"];
+      const lines = [headers.join(",")];
+
+      for (const row of rows) {
+        lines.push(headers.map(header => csvEscape(row[header])).join(","));
+      }
+
+      return lines.join("\n");
+    }
+
+    function csvEscape(value) {
+      const s = String(value ?? "");
+      if (/[",\n\r]/.test(s)) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+  </script>
+</body>
+</html>
