@@ -85,3 +85,5 @@ scripts that delete files or modify system configuration.
 
 - [`file-manager.html`](file-manager.html) - Standalone browser file vault that stores, downloads, and deletes files using IndexedDB.
 - [`tampermonkey/edx-download-transcripts.js`](tampermonkey/edx-download-transcripts.js) - Tampermonkey userscript that adds an edX button for downloading a video's transcript as text.
+- TODO csv-explorer
+- TODO json-explorer
