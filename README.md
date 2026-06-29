@@ -95,20 +95,11 @@ TODO: Convert this manual checklist into an automated browser test in the future
 Keep this checklist as documentation-only manual coverage unless a browser test
 framework is introduced later.
 
-Sample CSV:
+Sample CSV: [`csv-explorer-sample.csv`](csv-explorer-sample.csv)
 
-```csv
-Name,Team,Status,Score
-Ada,Platform,Active,91
-Ben,Platform,Inactive,77
-Cora,Data,Active,88
-Drew,Data,Pending,82
-Eli,Support,Active,73
-```
-
-1. Save the sample as `csv-explorer-sample.csv`, open
-   [`csv-explorer.html`](csv-explorer.html) in a browser, and load the file.
-   Confirm the rows render and column statistics appear.
+1. Open [`csv-explorer.html`](csv-explorer.html) in a browser and load
+   [`csv-explorer-sample.csv`](csv-explorer-sample.csv). Confirm the rows
+   render and column statistics appear.
 2. Use global search for `Data`; confirm only Cora and Drew remain visible.
 3. Add an include filter on `Status` for `Active`; confirm Ada, Cora, and Eli
    are visible.
