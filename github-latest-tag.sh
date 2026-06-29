@@ -55,6 +55,10 @@ if [[ -z "$OWNER" || -z "$REPO" ]]; then
   echo "Usage: $0 <owner> <repo> [--prefix <prefix>] [--porcelain]"
   exit 1
 fi
+if [[ ! "$OWNER" =~ ^[A-Za-z0-9_.-]+$ || ! "$REPO" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+  echo "Owner and repository contain unsupported characters." >&2
+  exit 1
+fi
 
 BASE_URL="https://api.github.com/repos/${OWNER}/${REPO}/tags"
 PER_PAGE=100
@@ -62,15 +66,18 @@ PAGE=1
 all_tags=""
 
 # --- Authentication (optional) ---
-AUTH_HEADER=()
-if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-  AUTH_HEADER=(-H "Authorization: token ${GITHUB_TOKEN}")
-fi
-
 # --- Fetch all pages of tags ---
 while :; do
   API_URL="${BASE_URL}?per_page=${PER_PAGE}&page=${PAGE}"
-  response=$(curl -sSL "${AUTH_HEADER[@]}" "$API_URL")
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    response=$(
+      printf 'header = "Authorization: Bearer %s"\nurl = "%s"\nsilent\nshow-error\nfail\nlocation\n' \
+        "$GITHUB_TOKEN" "$API_URL" |
+        curl --config -
+    )
+  else
+    response=$(curl --fail --silent --show-error --location "$API_URL")
+  fi
 
   count=$(echo "$response" | jq 'length')
   if [[ "$count" -eq 0 ]]; then
@@ -93,7 +100,7 @@ fi
 
 # --- Apply prefix filter if provided ---
 if [[ -n "$PREFIX" ]]; then
-  tags=$(echo "$tags" | grep "^${PREFIX}" || true)
+  tags=$(while IFS= read -r tag; do [[ "$tag" == "$PREFIX"* ]] && printf '%s\n' "$tag"; done <<< "$tags")
   if [[ -z "$tags" ]]; then
     echo "❌ No tags found for ${OWNER}/${REPO} with prefix '${PREFIX}'"
     exit 1

@@ -1,20 +1,35 @@
 #!/usr/bin/env python3
 import re
 import subprocess
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-HOST = "0.0.0.0"
+HOST = "127.0.0.1"
 PORT = 8787
+CACHE_SECONDS = 2.0
+_status_lock = threading.Lock()
+_status_cache = {"at": 0.0, "output": ""}
 
 def get_zpool_status() -> str:
-    p = subprocess.run(
-        ["/sbin/zpool", "status", "-v"],
-        capture_output=True,
-        text=True,
-        timeout=8,
-    )
-    out = p.stdout if p.returncode == 0 else (p.stdout + "\n" + p.stderr)
-    return out.rstrip("\n")
+    now = time.monotonic()
+    with _status_lock:
+        if now - _status_cache["at"] < CACHE_SECONDS:
+            return _status_cache["output"]
+        try:
+            p = subprocess.run(
+                ["/sbin/zpool", "status", "-v"],
+                capture_output=True,
+                text=True,
+                timeout=8,
+                check=False,
+            )
+            out = p.stdout if p.returncode == 0 else (p.stdout + "\n" + p.stderr)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            out = f"Unable to read zpool status: {exc}"
+        output = out.rstrip("\n")
+        _status_cache.update(at=time.monotonic(), output=output)
+        return output
 
 def _extract_pool_blocks(zpool_output: str) -> list[dict]:
     """
@@ -291,6 +306,13 @@ function setPool(el, poolName) {
   el.textContent = poolName ? `pool: ${poolName}` : "";
 }
 
+function setHeadline(el, state, detail) {
+  const pill = document.createElement("span");
+  pill.className = "pill";
+  pill.textContent = state;
+  el.replaceChildren(pill, document.createTextNode(` ${detail}`));
+}
+
 function formatResilverWidget(r) {
   if (!r) {
     setPool(resilverPool, null);
@@ -302,7 +324,7 @@ function formatResilverWidget(r) {
 
   if (r.active) {
     const eta = r.eta ? r.eta : "In progress";
-    resilverHeadline.innerHTML = `<span class="pill">ACTIVE</span> &nbsp; ${eta}`;
+    setHeadline(resilverHeadline, "ACTIVE", eta);
 
     const pct = (typeof r.pct_done === "number") ? `${r.pct_done.toFixed(1)}% done` : null;
     const parts = [];
@@ -310,7 +332,7 @@ function formatResilverWidget(r) {
     if (r.state) parts.push(r.state);
     resilverDetail.textContent = parts.join(" — ");
   } else {
-    resilverHeadline.innerHTML = `<span class="pill">IDLE</span> &nbsp; No resilver in progress`;
+    setHeadline(resilverHeadline, "IDLE", "No resilver in progress");
     resilverDetail.textContent = r.state ? r.state : "";
   }
 }
@@ -326,7 +348,7 @@ function formatScrubWidget(s) {
 
   if (s.active) {
     const eta = s.eta ? s.eta : "No ETA";
-    scrubHeadline.innerHTML = `<span class="pill">ACTIVE</span> &nbsp; ${eta}`;
+    setHeadline(scrubHeadline, "ACTIVE", eta);
 
     const pct = (typeof s.pct_done === "number") ? `${s.pct_done.toFixed(2)}% done` : null;
     const parts = [];
@@ -334,7 +356,7 @@ function formatScrubWidget(s) {
     if (s.state) parts.push(s.state);
     scrubDetail.textContent = parts.join(" — ");
   } else {
-    scrubHeadline.innerHTML = `<span class="pill">IDLE</span> &nbsp; Last scrub result`;
+    setHeadline(scrubHeadline, "IDLE", "Last scrub result");
     const parts = [];
     if (s.result) parts.push(s.result);
     if (s.duration) parts.push(`duration ${s.duration}`);
@@ -388,6 +410,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
         self.end_headers()
         self.wfile.write(body)
 
@@ -397,7 +423,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if self.path.startswith("/api/status"):
-            import time, json
+            import json
             output = get_zpool_status()
             payload = json.dumps({
                 "ts": int(time.time()),
@@ -411,7 +437,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, b"Not Found", "text/plain; charset=utf-8")
 
 def main():
-    httpd = HTTPServer((HOST, PORT), Handler)
+    httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"Serving on http://{HOST}:{PORT}")
     httpd.serve_forever()
 

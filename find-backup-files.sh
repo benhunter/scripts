@@ -3,6 +3,8 @@
 # Script to identify files that might need to be backed up on Ubuntu
 # Usage: find-backup-files.sh [days_modified]
 
+umask 077
+
 DAYS=${1:-7}
 OUTPUT_FILE="backup-candidates-$(date +%Y%m%d-%H%M%S).txt"
 

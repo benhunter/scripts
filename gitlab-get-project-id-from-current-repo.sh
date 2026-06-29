@@ -18,8 +18,8 @@ PROJECT_ID=$(echo "$PROJECTS_JSON" | jq --arg REPO_REMOTE_URL "$REPO_REMOTE_URL"
 # PROJECT_ID=$(echo "$PROJECTS_JSON" | jq '.[] | .id')
 
 # Check if a matching project was found
-if [ -n "$PROJECT_ID" ]; then
-    echo $PROJECT_ID
+if [[ "$PROJECT_ID" =~ ^[0-9]+$ ]]; then
+    echo "$PROJECT_ID"
 else
     # echo "No matching project found."
     exit 1

@@ -1,14 +1,34 @@
-#!/bin/sh
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# Currently working in project:
-PROJECT=$(gcloud config get-value project)
-echo "Working in project: $PROJECT"
+ASSUME_YES=false
+[[ "${1:-}" == "--yes" ]] && ASSUME_YES=true
 
-# List all the subnets in the project
-# gcloud compute networks subnets list --format="table(name,region)"
+PROJECT="$(gcloud config get-value project 2>/dev/null)"
+if [[ -z "$PROJECT" || "$PROJECT" == "(unset)" ]]; then
+  echo "No active Google Cloud project is configured." >&2
+  exit 1
+fi
 
-# List all subnets and their respective regions, then enable flow logs
-gcloud compute networks subnets list --format="csv[no-heading](name,region)" | while IFS=, read -r name region; do
-  echo "Enabling Flow Logs for subnet $name in $region..."
-  gcloud compute networks subnets update $name --region=$region --enable-flow-logs
+mapfile -t SUBNETS < <(gcloud compute networks subnets list --format="csv[no-heading](name,region)")
+if [[ ${#SUBNETS[@]} -eq 0 ]]; then
+  echo "No subnets found in project $PROJECT."
+  exit 0
+fi
+
+echo "Project: $PROJECT"
+printf 'Subnets to update:\n'
+printf '  %s\n' "${SUBNETS[@]}"
+if ! $ASSUME_YES; then
+  read -r -p "Enable VPC Flow Logs on every listed subnet? [y/N]: " reply
+  [[ "$reply" =~ ^[Yy]([Ee][Ss])?$ ]] || exit 0
+fi
+
+for subnet in "${SUBNETS[@]}"; do
+  IFS=, read -r name region <<< "$subnet"
+  [[ -n "$name" && -n "$region" ]] || {
+    echo "Malformed subnet record: $subnet" >&2
+    exit 1
+  }
+  gcloud compute networks subnets update "$name" --region="$region" --enable-flow-logs
 done

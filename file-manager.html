@@ -129,7 +129,7 @@
         <h3>Upload File</h3>
         <div id="dropZone" class="upload-area">
             <p class="upload-text">Drag & drop a file here</p>
-            <p style="color: #94a3b8; font-size: 0.875rem; margin: 0 0 1rem 0;">— or —</p>
+            <p style="color: #94a3b8; font-size: 0.875rem; margin: 0 0 1rem 0;">-- or --</p>
             <div class="upload-controls">
                 <input type="file" id="fileInput">
                 <button class="btn-primary" onclick="handleUploadClick()">Save to Storage</button>
@@ -246,7 +246,7 @@
         // 5. Load and Display Files
         function loadFiles() {
             const listElement = document.getElementById('fileList');
-            listElement.innerHTML = ''; // Clear current list
+            listElement.replaceChildren();
 
             const transaction = db.transaction([STORE_NAME], 'readonly');
             const store = transaction.objectStore(STORE_NAME);
@@ -263,7 +263,10 @@
                     cursor.continue();
                 } else {
                     if (!hasFiles) {
-                        listElement.innerHTML = '<li style="text-align:center; padding:1rem; color:#888;">No files stored yet.</li>';
+                        const emptyItem = document.createElement('li');
+                        emptyItem.style.cssText = 'text-align:center; padding:1rem; color:#888;';
+                        emptyItem.textContent = 'No files stored yet.';
+                        listElement.appendChild(emptyItem);
                     }
                 }
             };
@@ -279,17 +282,34 @@
             const sizeStr = formatSize(fileRecord.size);
             const dateStr = fileRecord.created.toLocaleDateString() + ' ' + fileRecord.created.toLocaleTimeString();
 
-            li.innerHTML = `
-                <div class="file-info">
-                    <span class="file-name">${fileRecord.name}</span>
-                    <span class="file-meta">${sizeStr} • ${dateStr}</span>
-                </div>
-                <div class="actions">
-                    <a href="${fileUrl}" download="${fileRecord.name}" class="btn-download">Download</a>
-                    <button class="btn-danger" onclick="deleteFile(${id})">Delete</button>
-                </div>
-            `;
+            const info = document.createElement('div');
+            info.className = 'file-info';
 
+            const name = document.createElement('span');
+            name.className = 'file-name';
+            name.textContent = fileRecord.name;
+
+            const meta = document.createElement('span');
+            meta.className = 'file-meta';
+            meta.textContent = `${sizeStr} - ${dateStr}`;
+            info.append(name, meta);
+
+            const actions = document.createElement('div');
+            actions.className = 'actions';
+
+            const downloadLink = document.createElement('a');
+            downloadLink.href = fileUrl;
+            downloadLink.download = fileRecord.name;
+            downloadLink.className = 'btn-download';
+            downloadLink.textContent = 'Download';
+
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'btn-danger';
+            deleteButton.textContent = 'Delete';
+            deleteButton.addEventListener('click', () => deleteFile(id));
+            actions.append(downloadLink, deleteButton);
+            li.append(info, actions);
             container.appendChild(li);
         }
 

@@ -1,0 +1,77 @@
+name: Security validation
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shell runtimes
+        run: sudo apt-get update && sudo apt-get install -y shellcheck zsh
+
+      - name: Parse Bash scripts
+        shell: bash
+        run: |
+          while IFS= read -r -d '' script; do
+            first_line="$(head -n 1 "$script")"
+            if [[ "$first_line" == *bash* || "$first_line" == "#!/bin/sh" ]]; then
+              bash -n "$script"
+            fi
+          done < <(find . -type f -name '*.sh' -print0)
+
+      - name: Parse Zsh scripts
+        shell: bash
+        run: |
+          while IFS= read -r -d '' script; do
+            if head -n 1 "$script" | grep -q zsh; then
+              zsh -n "$script"
+            fi
+          done < <(find . -type f -name '*.sh' -print0)
+
+      - name: Run ShellCheck
+        shell: bash
+        run: |
+          mapfile -d '' scripts < <(
+            while IFS= read -r -d '' script; do
+              first_line="$(head -n 1 "$script")"
+              if [[ "$first_line" == *bash* || "$first_line" == "#!/bin/sh" ]]; then
+                printf '%s\0' "$script"
+              fi
+            done < <(find . -type f -name '*.sh' -print0)
+          )
+          shellcheck --severity=error "${scripts[@]}"
+
+      - name: Parse Python and run tests
+        run: |
+          python -m compileall -q .
+          python -m unittest discover -s tests -v
+
+      - name: Parse JavaScript
+        run: node --check tampermonkey/edx-download-transcripts.js
+
+      - name: Parse PowerShell
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count) {
+              $failed = $true
+              $errors | ForEach-Object { Write-Error $_.Message }
+            }
+          }
+          if ($failed) { exit 1 }

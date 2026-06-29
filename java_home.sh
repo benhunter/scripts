@@ -3,7 +3,8 @@
 # Set java_home to the provided version.
 # Args: $1 = version number (21, 17, etc)
 set_java_home() {
-  export JAVA_HOME=$(/usr/libexec/java_home -v $1)
+  [[ "$1" =~ ^[0-9]+$ ]] || { echo "Java version must be numeric." >&2; return 2; }
+  export JAVA_HOME=$(/usr/libexec/java_home -v "$1")
   echo "JAVA_HOME=$JAVA_HOME"
 }
 
