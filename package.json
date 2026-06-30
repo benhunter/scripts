@@ -1,0 +1,14 @@
+{
+  "name": "scripts-browser-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "vite --host 127.0.0.1",
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "latest",
+    "vite": "latest"
+  }
+}

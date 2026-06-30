@@ -85,5 +85,5 @@ scripts that delete files or modify system configuration.
 
 - [`file-manager.html`](file-manager.html) - Standalone browser file vault that stores, downloads, and deletes files using IndexedDB.
 - [`tampermonkey/edx-download-transcripts.js`](tampermonkey/edx-download-transcripts.js) - Tampermonkey userscript that adds an edX button for downloading a video's transcript as text.
-- [`csv-explorer.html`](csv-explorer.html) - Browser-based CSV explorer for loading local CSV files, viewing rows, and calculating per-column statistics.
+- [`csv-explorer.html`](csv-explorer.html) - Browser-based CSV explorer for loading local CSV files, viewing rows, and calculating per-column statistics. Because it imports [`csv-explorer-core.js`](csv-explorer-core.js) as a native ES module, open it through a local HTTP server instead of a `file://` URL during local use: run `pnpm install`, then `pnpm start`, then open the Vite localhost URL for `csv-explorer.html`.
 - [`json-explorer.html`](json-explorer.html) - Browser-based JSON explorer for inspecting JSON with searchable tree and table views.
