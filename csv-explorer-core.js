@@ -163,9 +163,17 @@ export function normalizeFilterText(value) {
 }
 
 export function matchesColumnFilter(cellValue, filter) {
-  const normalizedFilter = normalizeFilterText(filter);
-  if (!normalizedFilter) return true;
-  return normalizeFilterText(cellValue).includes(normalizedFilter);
+  const normalizedCell = normalizeFilterText(cellValue);
+  const include = typeof filter === 'object' && filter !== null ? filter.include : filter;
+  const exclude = typeof filter === 'object' && filter !== null ? filter.exclude : '';
+
+  const normalizedInclude = normalizeFilterText(include);
+  if (normalizedInclude && !normalizedCell.includes(normalizedInclude)) return false;
+
+  const normalizedExclude = normalizeFilterText(exclude);
+  if (normalizedExclude && normalizedCell.includes(normalizedExclude)) return false;
+
+  return true;
 }
 
 export function rowMatchesColumnFilters(row, filters = {}) {
@@ -181,8 +189,15 @@ export function applyGlobalSearch(rows, headers, query) {
   return rows.filter(r => headers.some(h => normalizeFilterText(r[h]).includes(q)));
 }
 
+function hasActiveColumnFilter(filter) {
+  if (typeof filter === 'object' && filter !== null) {
+    return Boolean(normalizeFilterText(filter.include) || normalizeFilterText(filter.exclude));
+  }
+  return Boolean(normalizeFilterText(filter));
+}
+
 export function applyColumnFilters(rows, filters = {}) {
-  if (!filters || Object.values(filters).every(filter => !normalizeFilterText(filter))) return rows;
+  if (!filters || Object.values(filters).every(filter => !hasActiveColumnFilter(filter))) return rows;
   return rows.filter(row => rowMatchesColumnFilters(row, filters));
 }
 
