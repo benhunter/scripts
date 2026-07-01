@@ -162,6 +162,30 @@ export function normalizeFilterText(value) {
   return value == null ? '' : String(value).trim().toLowerCase();
 }
 
+function normalizeColumnFilter(filter) {
+  if (filter == null || typeof filter !== 'object' || Array.isArray(filter)) {
+    return { mode: 'include', value: filter };
+  }
+
+  return {
+    mode: normalizeFilterText(filter.mode ?? filter.type ?? 'include') === 'exclude' ? 'exclude' : 'include',
+    value: filter.value ?? filter.text ?? filter.query ?? ''
+  };
+}
+
+function expandColumnFilters(filter) {
+  return (Array.isArray(filter) ? filter : [filter])
+    .map(normalizeColumnFilter)
+    .filter(({ value }) => normalizeFilterText(value));
+}
+
+/**
+ * Returns whether one cell satisfies one column filter. String filters are
+ * include filters; object filters may specify `{ mode: 'exclude', value }`.
+ * Missing/unknown column values are treated as empty strings, so they do not
+ * throw: include filters do not match them, while exclude filters pass unless
+ * the filter value itself is empty (empty filters are ignored).
+ */
 export function matchesColumnFilter(cellValue, filter) {
   const normalizedCell = normalizeFilterText(cellValue);
   const include = typeof filter === 'object' && filter !== null ? filter.include : filter;
@@ -176,17 +200,30 @@ export function matchesColumnFilter(cellValue, filter) {
   return true;
 }
 
+/**
+ * Applies column filters using OR semantics for multiple include filters on the
+ * same column, AND semantics between columns, and rejects a row when any exclude
+ * filter matches. Unknown columns are treated as missing/empty cell values.
+ */
 export function rowMatchesColumnFilters(row, filters = {}) {
   for (const [column, filter] of Object.entries(filters || {})) {
-    if (!matchesColumnFilter(row?.[column], filter)) return false;
+    const columnFilters = expandColumnFilters(filter);
+    if (columnFilters.length === 0) continue;
+
+    const includeFilters = columnFilters.filter(({ mode }) => mode !== 'exclude');
+    const excludeFilters = columnFilters.filter(({ mode }) => mode === 'exclude');
+    const cellValue = row?.[column];
+
+    if (excludeFilters.some(f => !matchesColumnFilter(cellValue, f))) return false;
+    if (includeFilters.length > 0 && !includeFilters.some(f => matchesColumnFilter(cellValue, f))) return false;
   }
   return true;
 }
 
-export function applyGlobalSearch(rows, headers, query) {
+export function applyGlobalSearch(rows = [], headers = [], query = '') {
   const q = normalizeFilterText(query);
   if (!q) return rows;
-  return rows.filter(r => headers.some(h => normalizeFilterText(r[h]).includes(q)));
+  return rows.filter(row => headers.some(header => normalizeFilterText(row?.[header]).includes(q)));
 }
 
 function hasActiveColumnFilter(filter) {

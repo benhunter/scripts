@@ -137,6 +137,7 @@
 
 <script type="module">
 import {
+  applyGlobalSearch,
   applyTablePipeline,
   detectDelimiter,
   isNullish,
@@ -299,7 +300,6 @@ import {
     const dataRows = applyTablePipeline({
       rows,
       headers,
-      query: tableSearchEl.value,
       filters: {},
       sort: dataSort,
       limit: rowLimitEl.value,
