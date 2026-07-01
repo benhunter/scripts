@@ -50,6 +50,44 @@ test('isNullish follows csv-explorer null-token semantics', () => {
   assert.equal(isNullish('n/a', nullSet), false);
 });
 
+test('parseCsv parses basic CSV rows and fills missing fields with empty strings', () => {
+  const parsed = parseCsv('name,city,age\nAlice,Seattle,31\nBob,Portland\n', ',');
+
+  assert.deepEqual(parsed.headers, ['name', 'city', 'age']);
+  assert.deepEqual(parsed.rows, [
+    { name: 'Alice', city: 'Seattle', age: '31' },
+    { name: 'Bob', city: 'Portland', age: '' }
+  ]);
+});
+
+test('parseCsv strips a UTF-8 BOM before reading headers', () => {
+  const parsed = parseCsv('\uFEFFname,value\nAlice,1\n', ',');
+
+  assert.deepEqual(parsed.headers, ['name', 'value']);
+  assert.deepEqual(parsed.rows, [{ name: 'Alice', value: '1' }]);
+});
+
+test('parseCsv preserves delimiter characters inside quoted fields for detected delimiters', () => {
+  const parsed = parseCsv('name|note|status\nAlice|"uses | and ; and \t and , safely"|ok\n', '|');
+
+  assert.deepEqual(parsed.rows, [
+    { name: 'Alice', note: 'uses | and ; and \t and , safely', status: 'ok' }
+  ]);
+});
+
+test('detectDelimiter recognizes semicolon, tab, and pipe separated samples', () => {
+  assert.equal(detectDelimiter('name;note;count\nAlice;"a,b|c";2\nBob;plain;3\n'), ';');
+  assert.equal(detectDelimiter('name\tnote\tcount\nAlice\t"tabs\tinside, ignored"\t2\nBob\tplain\t3\n'), '\t');
+  assert.equal(detectDelimiter('name|note|count\nAlice|"pipes | inside; ignored"|2\nBob|plain|3\n'), '|');
+});
+
+test('countDelimsOutsideQuotes ignores delimiters and escaped quotes in quoted fields', () => {
+  const line = 'Alice,"said ""hello, friend""",active';
+
+  assert.equal(countDelimsOutsideQuotes(line, ','), 2);
+  assert.equal(countDelimsOutsideQuotes('Alice|"pipe | and ""quote"""|active', '|'), 2);
+});
+
 test('isNullish and summarizeColumn honor configured null tokens', () => {
   const rows = [
     { score: '1' },
