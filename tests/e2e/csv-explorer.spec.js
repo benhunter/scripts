@@ -16,6 +16,14 @@ async function expectVisibleDataRows(page, names) {
   if (names.length > 0) await expect(rows).toContainText(names);
 }
 
+async function addColumnFilter(page, { column, mode = 'include', value }) {
+  await page.locator('#filterColumn').selectOption(column);
+  await page.locator(`input[name="filterMode"][value="${mode}"]`).check();
+  await page.locator('#filterValue').fill(value);
+  await page.locator('#addFilterBtn').click();
+  await expect(page.locator('#tableStatus')).toHaveText('Rendered');
+}
+
 test('landing page lists available HTML apps', async ({ page }) => {
   await page.goto('/');
 
@@ -70,4 +78,66 @@ test('filters the table to an empty result when no rows match', async ({ page })
   await expect(page.locator('#dataWrap tbody')).not.toContainText('Bob');
   await expect(page.locator('#dataWrap tbody')).not.toContainText('Carol');
   await expect(page.locator('#dataWrap tbody')).not.toContainText('Dave');
+});
+
+test('applies include and exclude column filters from the builder', async ({ page }) => {
+  await loadPeopleCsv(page);
+
+  await addColumnFilter(page, { column: 'team', value: 'blue' });
+  await expect(page.locator('#activeFilterCount')).toHaveText('1');
+  await expect(page.locator('#shownCount')).toHaveText('3');
+  await expectVisibleDataRows(page, ['Bob', 'Carol', 'Dave']);
+  await expect(page.locator('#dataWrap tbody')).not.toContainText('Alice');
+
+  await addColumnFilter(page, { column: 'note', mode: 'exclude', value: 'plain' });
+  await expect(page.locator('#activeFilterCount')).toHaveText('2');
+  await expect(page.locator('#shownCount')).toHaveText('2');
+  await expectVisibleDataRows(page, ['Bob', 'Carol']);
+  await expect(page.locator('#dataWrap tbody')).not.toContainText('Dave');
+
+  await page.locator('#tableSearch').fill('said');
+  await expect(page.locator('#shownCount')).toHaveText('1');
+  await expectVisibleDataRows(page, ['Bob']);
+  await expect(page.locator('#dataWrap tbody')).not.toContainText('Carol');
+});
+
+test('supports multiple same-column filters, removal, and clearing', async ({ page }) => {
+  await loadPeopleCsv(page);
+
+  await addColumnFilter(page, { column: 'note', value: 'hello' });
+  await addColumnFilter(page, { column: 'note', value: 'plain' });
+
+  await expect(page.locator('#activeFilterCount')).toHaveText('2');
+  await expect(page.locator('#shownCount')).toHaveText('2');
+  await expectVisibleDataRows(page, ['Alice', 'Dave']);
+  await expect(page.locator('#dataWrap tbody')).not.toContainText('Bob');
+  await expect(page.locator('#dataWrap tbody')).not.toContainText('Carol');
+
+  await page.locator('#activeFilters .filter-chip').filter({ hasText: 'hello' }).getByRole('button', { name: /remove/i }).click();
+  await expect(page.locator('#activeFilterCount')).toHaveText('1');
+  await expect(page.locator('#shownCount')).toHaveText('1');
+  await expectVisibleDataRows(page, ['Dave']);
+  await expect(page.locator('#dataWrap tbody')).not.toContainText('Alice');
+
+  await page.locator('#clearFiltersBtn').click();
+  await expect(page.locator('#activeFilterCount')).toHaveText('0');
+  await expect(page.locator('#activeFilters')).toContainText('No column filters');
+  await expect(page.locator('#shownCount')).toHaveText('4');
+  await expectVisibleDataRows(page, ['Alice', 'Bob', 'Carol', 'Dave']);
+});
+
+test('orders active filter chips by the applied column-filter precedence', async ({ page }) => {
+  await loadPeopleCsv(page);
+
+  await addColumnFilter(page, { column: 'note', value: 'hello' });
+  await addColumnFilter(page, { column: 'note', mode: 'exclude', value: 'plain' });
+
+  const chips = page.locator('#activeFilters .filter-chip');
+  await expect(chips).toHaveCount(2);
+  await expect(chips.nth(0)).toContainText('Exclude');
+  await expect(chips.nth(0)).toContainText('plain');
+  await expect(chips.nth(1)).toContainText('Include');
+  await expect(chips.nth(1)).toContainText('hello');
+  await expect(page.locator('#shownCount')).toHaveText('1');
+  await expectVisibleDataRows(page, ['Alice']);
 });

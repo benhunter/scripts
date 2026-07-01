@@ -100,6 +100,12 @@ supersede include filters, and a row is rejected if any exclude filter matches.
 Across different columns, filters are ANDed together, so every filtered column
 must pass. Missing or unknown cell values are treated as empty strings.
 
+### CSV Explorer roadmap
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| Copy visible table as Markdown | Planned | Add a click-to-copy control that copies the table headers and currently visible rows as a Markdown table. |
+
 ### CSV Explorer manual QA checklist
 
 Automated coverage for the core parser/filter helpers and the main browser
