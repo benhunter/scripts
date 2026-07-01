@@ -21,13 +21,14 @@ test('loads a CSV and supports the main browsing journey', async ({ page }) => {
   await expect(page.locator('#tableStatus')).toHaveText('Rendered');
 
   await page.locator('#tableSearch').fill('blue');
-  await expect(page.locator('#shownCount')).toHaveText('3');
+  await expect(page.locator('#tableSearch')).toHaveValue('blue');
+  await expect(page.locator('#shownCount')).toHaveText('4');
 
   await page.getByRole('columnheader', { name: /score/ }).click();
   await expect(page.locator('#dataSortLabel')).toContainText('score');
 
   await page.locator('#rowLimit').selectOption('1000');
-  await expect(page.locator('#shownCount')).toHaveText('3');
+  await expect(page.locator('#shownCount')).toHaveText('4');
 
   await page.locator('#nullTokens').fill('N/A');
   await page.locator('#recomputeBtn').click();
