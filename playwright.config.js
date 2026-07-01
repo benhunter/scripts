@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './tests/e2e',
   webServer: {
     command: 'pnpm start',
-    url: 'http://127.0.0.1:5173/csv-explorer.html',
+    url: 'http://127.0.0.1:5173/',
     reuseExistingServer: !process.env.CI
   },
   use: {

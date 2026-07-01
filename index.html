@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scripts Browser Tools</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 24px;
+      line-height: 1.45;
+      max-width: 900px;
+    }
+    header { margin-bottom: 18px; }
+    h1 { font-size: 24px; margin: 0 0 8px 0; }
+    .muted { opacity: .78; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .card {
+      border: 1px solid rgba(127,127,127,.35);
+      border-radius: 12px;
+      padding: 14px;
+      background: Canvas;
+      color: CanvasText;
+    }
+    .card h2 { font-size: 16px; margin: 0 0 6px 0; }
+    .card p { margin: 0 0 10px 0; }
+    a { color: LinkText; }
+    .open-link { font-weight: 700; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Scripts Browser Tools</h1>
+    <p class="muted">Local browser apps served by <code>pnpm start</code>. Choose an app below.</p>
+  </header>
+
+  <main>
+    <section class="grid" aria-label="Available HTML apps">
+      <article class="card">
+        <h2>CSV Explorer</h2>
+        <p class="muted">Load a local CSV file, browse rows, search, sort, and calculate per-column statistics.</p>
+        <a class="open-link" href="./csv-explorer.html">Open CSV Explorer</a>
+      </article>
+
+      <article class="card">
+        <h2>File Manager</h2>
+        <p class="muted">Standalone browser file vault for storing, downloading, and deleting files with IndexedDB.</p>
+        <a class="open-link" href="./file-manager.html">Open File Manager</a>
+      </article>
+
+      <article class="card">
+        <h2>JSON Explorer</h2>
+        <p class="muted">Inspect JSON with searchable tree and table views.</p>
+        <a class="open-link" href="./json-explorer.html">Open JSON Explorer</a>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
