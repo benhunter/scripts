@@ -114,6 +114,104 @@ test('isNullish and summarizeColumn honor configured null tokens', () => {
   });
 });
 
+test('summarizeColumn reports numeric column summary statistics', () => {
+  const rows = [
+    { amount: '10' },
+    { amount: '20.5' },
+    { amount: '-5' },
+    { amount: '10' },
+    { amount: 'N/A' },
+    { amount: '' }
+  ];
+  const nullSet = new Set(['N/A']);
+
+  assert.deepEqual(summarizeColumn('amount', rows, nullSet), {
+    column: 'amount',
+    rowCount: 6,
+    nullCount: 2,
+    nonNullCount: 4,
+    nullPct: 2 / 6,
+    distinctCount: 3,
+    isNumeric: true,
+    numericRatio: 1,
+    min: -5,
+    max: 20.5,
+    mean: 8.875
+  });
+});
+
+test('summarizeColumn reports text column summary without numeric min/max/mean', () => {
+  const rows = [
+    { category: 'Alpha' },
+    { category: 'Beta' },
+    { category: 'Alpha' },
+    { category: 'N/A' },
+    { category: '   ' }
+  ];
+  const nullSet = new Set(['N/A']);
+
+  assert.deepEqual(summarizeColumn('category', rows, nullSet), {
+    column: 'category',
+    rowCount: 5,
+    nullCount: 2,
+    nonNullCount: 3,
+    nullPct: 2 / 5,
+    distinctCount: 2,
+    isNumeric: false,
+    numericRatio: 0,
+    min: null,
+    max: null,
+    mean: null
+  });
+});
+
+test('summarizeColumn excludes nulls from distinct counts and numeric ratios', () => {
+  const rows = [
+    { value: '1' },
+    { value: '1' },
+    { value: 'two' },
+    { value: 'NULL' },
+    { value: '' },
+    { value: null }
+  ];
+  const nullSet = new Set(['NULL']);
+
+  const summary = summarizeColumn('value', rows, nullSet);
+
+  assert.equal(summary.nullCount, 3);
+  assert.equal(summary.nonNullCount, 3);
+  assert.equal(summary.distinctCount, 2);
+  assert.equal(summary.numericRatio, 2 / 3);
+  assert.equal(summary.isNumeric, false);
+});
+
+test('summarizeColumn infers numeric columns only at the numeric threshold', () => {
+  const numericRows = [
+    ...Array.from({ length: 19 }, (_, index) => ({ value: String(index + 1) })),
+    { value: 'not numeric' }
+  ];
+  const textRows = [
+    ...Array.from({ length: 18 }, (_, index) => ({ value: String(index + 1) })),
+    { value: 'not numeric' },
+    { value: 'also text' }
+  ];
+
+  const numericSummary = summarizeColumn('value', numericRows, new Set());
+  const textSummary = summarizeColumn('value', textRows, new Set());
+
+  assert.equal(numericSummary.numericRatio, 0.95);
+  assert.equal(numericSummary.isNumeric, true);
+  assert.equal(numericSummary.min, 1);
+  assert.equal(numericSummary.max, 19);
+  assert.equal(numericSummary.mean, 10);
+
+  assert.equal(textSummary.numericRatio, 0.9);
+  assert.equal(textSummary.isNumeric, false);
+  assert.equal(textSummary.min, null);
+  assert.equal(textSummary.max, null);
+  assert.equal(textSummary.mean, null);
+});
+
 test('filter helpers normalize text and match per-column filters', () => {
   const row = { city: ' New York ', state: 'NY' };
 
