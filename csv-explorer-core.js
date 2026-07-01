@@ -162,34 +162,36 @@ export function normalizeFilterText(value) {
   return value == null ? '' : String(value).trim().toLowerCase();
 }
 
-function normalizeColumnFilter(filter) {
+/**
+ * @typedef {object} ColumnFilter
+ * @property {string} [include] Include rows whose cell contains this text.
+ * @property {string} [exclude] Exclude rows whose cell contains this text.
+ */
+
+function getColumnFilterParts(filter) {
   if (filter == null || typeof filter !== 'object' || Array.isArray(filter)) {
-    return { mode: 'include', value: filter };
+    return { include: filter, exclude: '' };
   }
 
   return {
-    mode: normalizeFilterText(filter.mode ?? filter.type ?? 'include') === 'exclude' ? 'exclude' : 'include',
-    value: filter.value ?? filter.text ?? filter.query ?? ''
+    include: filter.include ?? '',
+    exclude: filter.exclude ?? ''
   };
 }
 
-function expandColumnFilters(filter) {
-  return (Array.isArray(filter) ? filter : [filter])
-    .map(normalizeColumnFilter)
-    .filter(({ value }) => normalizeFilterText(value));
-}
-
 /**
- * Returns whether one cell satisfies one column filter. String filters are
- * include filters; object filters may specify `{ mode: 'exclude', value }`.
+ * Returns whether one cell satisfies the standard column filter shape. String
+ * filters are treated as `{ include: value }` for backwards compatibility.
  * Missing/unknown column values are treated as empty strings, so they do not
  * throw: include filters do not match them, while exclude filters pass unless
  * the filter value itself is empty (empty filters are ignored).
+ *
+ * @param {unknown} cellValue
+ * @param {ColumnFilter|string} filter
  */
 export function matchesColumnFilter(cellValue, filter) {
   const normalizedCell = normalizeFilterText(cellValue);
-  const include = typeof filter === 'object' && filter !== null ? filter.include : filter;
-  const exclude = typeof filter === 'object' && filter !== null ? filter.exclude : '';
+  const { include, exclude } = getColumnFilterParts(filter);
 
   const normalizedInclude = normalizeFilterText(include);
   if (normalizedInclude && !normalizedCell.includes(normalizedInclude)) return false;
@@ -201,21 +203,18 @@ export function matchesColumnFilter(cellValue, filter) {
 }
 
 /**
- * Applies column filters using OR semantics for multiple include filters on the
- * same column, AND semantics between columns, and rejects a row when any exclude
- * filter matches. Unknown columns are treated as missing/empty cell values.
+ * Applies column filters using AND semantics between columns. Each column uses
+ * the standard `{ include, exclude }` shape: include must match when present,
+ * and exclude rejects the row when it matches. Unknown columns are treated as
+ * missing/empty cell values.
+ *
+ * @param {Record<string, unknown>} row
+ * @param {Record<string, ColumnFilter|string>} filters
  */
 export function rowMatchesColumnFilters(row, filters = {}) {
   for (const [column, filter] of Object.entries(filters || {})) {
-    const columnFilters = expandColumnFilters(filter);
-    if (columnFilters.length === 0) continue;
-
-    const includeFilters = columnFilters.filter(({ mode }) => mode !== 'exclude');
-    const excludeFilters = columnFilters.filter(({ mode }) => mode === 'exclude');
-    const cellValue = row?.[column];
-
-    if (excludeFilters.some(f => !matchesColumnFilter(cellValue, f))) return false;
-    if (includeFilters.length > 0 && !includeFilters.some(f => matchesColumnFilter(cellValue, f))) return false;
+    if (!hasActiveColumnFilter(filter)) continue;
+    if (!matchesColumnFilter(row?.[column], filter)) return false;
   }
   return true;
 }
@@ -227,10 +226,8 @@ export function applyGlobalSearch(rows = [], headers = [], query = '') {
 }
 
 function hasActiveColumnFilter(filter) {
-  if (typeof filter === 'object' && filter !== null) {
-    return Boolean(normalizeFilterText(filter.include) || normalizeFilterText(filter.exclude));
-  }
-  return Boolean(normalizeFilterText(filter));
+  const { include, exclude } = getColumnFilterParts(filter);
+  return Boolean(normalizeFilterText(include) || normalizeFilterText(exclude));
 }
 
 export function applyColumnFilters(rows, filters = {}) {
