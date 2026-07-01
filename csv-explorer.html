@@ -137,7 +137,6 @@
 
 <script type="module">
 import {
-  applyGlobalSearch,
   applyTablePipeline,
   detectDelimiter,
   isNullish,
@@ -297,10 +296,10 @@ import {
     tableStatusEl.textContent = 'Filtering…';
     tableStatusEl.classList.remove('muted');
 
-    const searchedRows = applyGlobalSearch(rows, headers, tableSearchEl.value);
-    const filteredRows = applyTablePipeline({
-      rows: searchedRows,
+    const dataRows = applyTablePipeline({
+      rows,
       headers,
+      query: tableSearchEl.value,
       filters: {},
       sort: dataSort,
       limit: rowLimitEl.value,
@@ -308,8 +307,8 @@ import {
       nullSet: getNullTokenSet()
     });
 
-    shownCountEl.textContent = String(filteredRows.length);
-    renderDataTableChunked(headers, filteredRows);
+    shownCountEl.textContent = String(dataRows.length);
+    renderDataTableChunked(headers, dataRows);
   }
 
   function renderDataTableChunked(headers, dataRows) {
@@ -354,6 +353,16 @@ import {
     const tbody = document.createElement('tbody');
     table.appendChild(tbody);
     dataWrapEl.appendChild(table);
+
+    if (dataRows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'muted';
+      empty.style.marginTop = '8px';
+      empty.textContent = 'No rows match the current filters.';
+      dataWrapEl.appendChild(empty);
+      tableStatusEl.textContent = 'Rendered';
+      return;
+    }
 
     // Chunked row rendering for responsiveness
     const CHUNK = 300;

@@ -164,19 +164,42 @@ export function normalizeFilterText(value) {
 
 function normalizeColumnFilter(filter) {
   if (filter == null || typeof filter !== 'object' || Array.isArray(filter)) {
-    return { mode: 'include', value: filter };
+    return [{ mode: 'include', value: filter }];
   }
 
-  return {
-    mode: normalizeFilterText(filter.mode ?? filter.type ?? 'include') === 'exclude' ? 'exclude' : 'include',
-    value: filter.value ?? filter.text ?? filter.query ?? ''
-  };
+  const hasInclude = Object.prototype.hasOwnProperty.call(filter, 'include');
+  const hasExclude = Object.prototype.hasOwnProperty.call(filter, 'exclude');
+  if (hasInclude || hasExclude) {
+    return [
+      ...normalizeFilterValues('include', filter.include ?? ''),
+      ...normalizeFilterValues('exclude', filter.exclude ?? '')
+    ];
+  }
+
+  const mode = normalizeFilterText(filter.mode ?? filter.type ?? 'include') === 'exclude' ? 'exclude' : 'include';
+  return normalizeFilterValues(mode, filter.value ?? filter.text ?? filter.query ?? '');
+}
+
+function normalizeFilterValues(mode, value) {
+  return (Array.isArray(value) ? value : [value]).map(v => ({ mode, value: v }));
 }
 
 function expandColumnFilters(filter) {
   return (Array.isArray(filter) ? filter : [filter])
-    .map(normalizeColumnFilter)
+    .flatMap(normalizeColumnFilter)
     .filter(({ value }) => normalizeFilterText(value));
+}
+
+function cellMatchesColumnFilters(cellValue, columnFilters) {
+  const normalizedCell = normalizeFilterText(cellValue);
+  const includeFilters = columnFilters.filter(({ mode }) => mode !== 'exclude');
+  const excludeFilters = columnFilters.filter(({ mode }) => mode === 'exclude');
+
+  if (excludeFilters.some(({ value }) => normalizedCell.includes(normalizeFilterText(value)))) return false;
+  if (includeFilters.length > 0) {
+    return includeFilters.some(({ value }) => normalizedCell.includes(normalizeFilterText(value)));
+  }
+  return true;
 }
 
 /**
@@ -187,12 +210,9 @@ function expandColumnFilters(filter) {
  * the filter value itself is empty (empty filters are ignored).
  */
 export function matchesColumnFilter(cellValue, filter) {
-  const { mode, value } = normalizeColumnFilter(filter);
-  const normalizedFilter = normalizeFilterText(value);
-  if (!normalizedFilter) return true;
-
-  const matches = normalizeFilterText(cellValue).includes(normalizedFilter);
-  return mode === 'exclude' ? !matches : matches;
+  const columnFilters = expandColumnFilters(filter);
+  if (columnFilters.length === 0) return true;
+  return cellMatchesColumnFilters(cellValue, columnFilters);
 }
 
 /**
@@ -205,12 +225,7 @@ export function rowMatchesColumnFilters(row, filters = {}) {
     const columnFilters = expandColumnFilters(filter);
     if (columnFilters.length === 0) continue;
 
-    const includeFilters = columnFilters.filter(({ mode }) => mode !== 'exclude');
-    const excludeFilters = columnFilters.filter(({ mode }) => mode === 'exclude');
-    const cellValue = row?.[column];
-
-    if (excludeFilters.some(f => !matchesColumnFilter(cellValue, f))) return false;
-    if (includeFilters.length > 0 && !includeFilters.some(f => matchesColumnFilter(cellValue, f))) return false;
+    if (!cellMatchesColumnFilters(row?.[column], columnFilters)) return false;
   }
   return true;
 }
@@ -221,8 +236,12 @@ export function applyGlobalSearch(rows = [], headers = [], query = '') {
   return rows.filter(row => headers.some(header => normalizeFilterText(row?.[header]).includes(q)));
 }
 
+function hasActiveColumnFilter(filter) {
+  return expandColumnFilters(filter).length > 0;
+}
+
 export function applyColumnFilters(rows, filters = {}) {
-  if (!filters || Object.values(filters).every(filter => expandColumnFilters(filter).length === 0)) return rows;
+  if (!filters || Object.values(filters).every(filter => !hasActiveColumnFilter(filter))) return rows;
   return rows.filter(row => rowMatchesColumnFilters(row, filters));
 }
 
