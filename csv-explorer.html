@@ -37,6 +37,31 @@
       cursor: pointer;
     }
     .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .filter-panel { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(127,127,127,.25); }
+    .filter-controls input[type="text"] { min-width: 180px; }
+    .segmented {
+      display: inline-flex; overflow: hidden; border: 1px solid rgba(127,127,127,.35);
+      border-radius: 8px; background: Canvas; color: CanvasText;
+    }
+    .segmented label {
+      display: inline-flex; gap: 5px; align-items: center; padding: 5px 8px;
+      font-weight: 600; cursor: pointer;
+    }
+    .segmented label + label { border-left: 1px solid rgba(127,127,127,.35); }
+    .segmented input { margin: 0; }
+    .filter-list { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+    .filter-group {
+      display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center;
+      padding: 4px; border: 1px solid rgba(127,127,127,.25); border-radius: 8px;
+    }
+    .filter-group-name { font-weight: 700; padding: 0 4px; }
+    .filter-chip {
+      display: inline-flex; gap: 6px; align-items: center; max-width: 100%;
+      padding: 3px 4px 3px 8px; border: 1px solid rgba(127,127,127,.35);
+      border-radius: 8px; background: rgba(127,127,127,.08);
+    }
+    .filter-chip .mode { font-weight: 700; }
+    .filter-chip .filter-remove { padding: 2px 6px; border-radius: 6px; }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
   </style>
 </head>
@@ -132,6 +157,26 @@
       <span class="pill muted">Sort: <span id="dataSortLabel">none</span></span>
     </div>
 
+    <div class="filter-panel" id="columnFiltersPanel">
+      <div class="row filter-controls">
+        <strong style="margin-right:8px;">Column filters</strong>
+        <label for="filterColumn" class="muted" style="font-weight:600;">Column:</label>
+        <select id="filterColumn" disabled></select>
+        <div class="segmented" role="radiogroup" aria-label="Filter mode">
+          <label><input type="radio" name="filterMode" value="include" checked /> Include</label>
+          <label><input type="radio" name="filterMode" value="exclude" /> Exclude</label>
+        </div>
+        <label for="filterValue" class="muted" style="font-weight:600;">Value:</label>
+        <input id="filterValue" type="text" placeholder="substring match" disabled />
+        <button id="addFilterBtn" class="btn" type="button" disabled>Add filter</button>
+        <button id="clearFiltersBtn" class="btn" type="button" disabled>Clear filters</button>
+        <span class="pill muted">Filters: <span id="activeFilterCount">0</span></span>
+      </div>
+      <div id="activeFilters" class="filter-list" aria-live="polite">
+        <span class="muted">No column filters</span>
+      </div>
+    </div>
+
     <div class="table-wrap" id="dataWrap" style="max-height:650px;"></div>
   </section>
 
@@ -174,6 +219,12 @@ import {
 
   const tableSearchEl = document.getElementById('tableSearch');
   const rowLimitEl = document.getElementById('rowLimit');
+  const filterColumnEl = document.getElementById('filterColumn');
+  const filterValueEl = document.getElementById('filterValue');
+  const addFilterBtn = document.getElementById('addFilterBtn');
+  const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+  const activeFilterCountEl = document.getElementById('activeFilterCount');
+  const activeFiltersEl = document.getElementById('activeFilters');
   const dataWrapEl = document.getElementById('dataWrap');
   const shownCountEl = document.getElementById('shownCount');
   const dataSortLabelEl = document.getElementById('dataSortLabel');
@@ -189,6 +240,7 @@ import {
 
   // Sort state for Entire Table
   let dataSort = { key: null, dir: 'asc' }; // key is column name or null
+  let columnFilters = {}; // column -> [{ mode: 'include'|'exclude', value }]
 
   // Table render state
   let tableRenderToken = 0;
@@ -226,6 +278,8 @@ import {
 
       renderColumns(headers);
       initProfileSelect(headers);
+      columnFilters = {};
+      initColumnFilterControls(headers);
 
       summaryCard.style.display = '';
       columnsCard.style.display = '';
@@ -239,6 +293,7 @@ import {
       rowLimitEl.value = '0';
       allStatsSort = { key: 'nullCount', dir: 'desc' };
       dataSort = { key: null, dir: 'asc' };
+      renderActiveFilters();
       updateDataSortLabel();
 
       // Compute stats first (so inferred types are ready for sorting)
@@ -289,6 +344,20 @@ import {
 
   tableSearchEl.addEventListener('input', debounce(() => applyAndRenderTable(), 150));
   rowLimitEl.addEventListener('change', () => applyAndRenderTable());
+  filterColumnEl.addEventListener('change', updateAddFilterButton);
+  filterValueEl.addEventListener('input', updateAddFilterButton);
+  filterValueEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    addColumnFilterFromForm();
+  });
+  addFilterBtn.addEventListener('click', addColumnFilterFromForm);
+  clearFiltersBtn.addEventListener('click', () => {
+    if (activeFilterCount() === 0) return;
+    columnFilters = {};
+    renderActiveFilters();
+    applyAndRenderTable();
+  });
 
   function applyAndRenderTable() {
     if (!headers.length) return;
@@ -300,7 +369,7 @@ import {
       rows,
       headers,
       query: tableSearchEl.value,
-      filters: {},
+      filters: columnFilters,
       sort: dataSort,
       limit: rowLimitEl.value,
       statsMap: allStats,
@@ -460,6 +529,134 @@ import {
     profileStatusEl.classList.add('muted');
     profileKpisEl.innerHTML = '';
     topValuesWrapEl.innerHTML = '';
+  }
+
+  function initColumnFilterControls(headers) {
+    filterColumnEl.innerHTML = '';
+    for (const h of headers) {
+      const opt = document.createElement('option');
+      opt.value = h;
+      opt.textContent = h;
+      filterColumnEl.appendChild(opt);
+    }
+
+    filterColumnEl.disabled = headers.length === 0;
+    filterValueEl.disabled = headers.length === 0;
+    filterValueEl.value = '';
+
+    const includeModeEl = document.querySelector('input[name="filterMode"][value="include"]');
+    if (includeModeEl) includeModeEl.checked = true;
+
+    updateAddFilterButton();
+  }
+
+  function selectedFilterMode() {
+    const checked = document.querySelector('input[name="filterMode"]:checked');
+    return checked?.value === 'exclude' ? 'exclude' : 'include';
+  }
+
+  function addColumnFilterFromForm() {
+    const column = filterColumnEl.value;
+    const value = filterValueEl.value.trim();
+    if (!column || !value) {
+      updateAddFilterButton();
+      return;
+    }
+
+    const mode = selectedFilterMode();
+    const existing = columnFilters[column] || [];
+    const normalizedValue = value.toLowerCase();
+    const alreadyExists = existing.some(f => f.mode === mode && String(f.value).toLowerCase() === normalizedValue);
+
+    if (!alreadyExists) {
+      columnFilters[column] = [...existing, { mode, value }];
+      renderActiveFilters();
+      applyAndRenderTable();
+    }
+
+    filterValueEl.value = '';
+    updateAddFilterButton();
+  }
+
+  function removeColumnFilter(column, index) {
+    const remaining = (columnFilters[column] || []).filter((_, i) => i !== index);
+    if (remaining.length === 0) {
+      delete columnFilters[column];
+    } else {
+      columnFilters[column] = remaining;
+    }
+    renderActiveFilters();
+    applyAndRenderTable();
+  }
+
+  function activeFilterCount() {
+    return Object.values(columnFilters).reduce((sum, filters) => sum + filters.length, 0);
+  }
+
+  function renderActiveFilters() {
+    const count = activeFilterCount();
+    activeFilterCountEl.textContent = String(count);
+    clearFiltersBtn.disabled = count === 0;
+    activeFiltersEl.innerHTML = '';
+
+    if (count === 0) {
+      const empty = document.createElement('span');
+      empty.className = 'muted';
+      empty.textContent = 'No column filters';
+      activeFiltersEl.appendChild(empty);
+      return;
+    }
+
+    const orderedColumns = [
+      ...headers.filter(h => columnFilters[h]?.length),
+      ...Object.keys(columnFilters).filter(h => !headers.includes(h))
+    ];
+
+    for (const column of orderedColumns) {
+      const filters = columnFilters[column] || [];
+      if (!filters.length) continue;
+
+      const group = document.createElement('div');
+      group.className = 'filter-group';
+      group.dataset.column = column;
+
+      const groupName = document.createElement('span');
+      groupName.className = 'filter-group-name';
+      groupName.textContent = column;
+      group.appendChild(groupName);
+
+      filters.forEach((filter, index) => {
+        const chip = document.createElement('span');
+        chip.className = 'filter-chip';
+        chip.dataset.mode = filter.mode;
+        chip.dataset.value = filter.value;
+
+        const mode = document.createElement('span');
+        mode.className = 'mode';
+        mode.textContent = filter.mode === 'exclude' ? 'Exclude' : 'Include';
+
+        const value = document.createElement('code');
+        value.textContent = filter.value;
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn filter-remove';
+        remove.textContent = 'Remove';
+        remove.setAttribute('aria-label', `Remove ${filter.mode} filter ${filter.value} from ${column}`);
+        remove.addEventListener('click', () => removeColumnFilter(column, index));
+
+        chip.appendChild(mode);
+        chip.appendChild(value);
+        chip.appendChild(remove);
+        group.appendChild(chip);
+      });
+
+      activeFiltersEl.appendChild(group);
+    }
+  }
+
+  function updateAddFilterButton() {
+    addFilterBtn.disabled = filterColumnEl.disabled || !filterColumnEl.value || filterValueEl.value.trim().length === 0;
   }
 
   function getNullTokenSet() {
