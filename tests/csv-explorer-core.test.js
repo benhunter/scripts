@@ -222,6 +222,20 @@ test('filter helpers normalize text and match per-column filters', () => {
   assert.equal(rowMatchesColumnFilters(row, { city: 'new', state: 'ca' }), false);
 });
 
+test('column filters let same-column exclude supersede include', () => {
+  const rows = [
+    { team: 'red' },
+    { team: 'blue' },
+    { team: 'green' }
+  ];
+  const filters = { team: { include: 'e', exclude: 'gr' } };
+
+  assert.equal(matchesColumnFilter('green', { include: 'e', exclude: 'gr' }), false);
+  assert.equal(matchesColumnFilter('blue', { include: 'e', exclude: 'gr' }), true);
+  assert.equal(rowMatchesColumnFilters({ team: 'green' }, filters), false);
+  assert.deepEqual(applyColumnFilters(rows, filters).map(r => r.team), ['red', 'blue']);
+});
+
 test('global search returns original rows for empty or whitespace-only queries', () => {
   const rows = [{ name: 'Alice' }, { name: 'Bob' }];
 
