@@ -33,6 +33,23 @@ test('parseCsv handles quoted delimiters, escaped quotes, CRLF, and blank lines'
   ]);
 });
 
+test('isNullish follows csv-explorer null-token semantics', () => {
+  const nullSet = new Set(['N/A', 'NULL', '-']);
+
+  assert.equal(isNullish(null, nullSet), true);
+  assert.equal(isNullish(undefined, nullSet), true);
+  assert.equal(isNullish('', nullSet), true);
+  assert.equal(isNullish('   ', nullSet), true);
+  assert.equal(isNullish('N/A', nullSet), true);
+  assert.equal(isNullish(' N/A ', nullSet), true);
+  assert.equal(isNullish('-', nullSet), true);
+  assert.equal(isNullish('0', nullSet), false);
+  assert.equal(isNullish('none', nullSet), false);
+  assert.equal(isNullish('null', nullSet), false);
+  assert.equal(isNullish('NULL', nullSet), true);
+  assert.equal(isNullish('n/a', nullSet), false);
+});
+
 test('isNullish and summarizeColumn honor configured null tokens', () => {
   const rows = [
     { score: '1' },
