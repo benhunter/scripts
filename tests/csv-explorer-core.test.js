@@ -76,6 +76,99 @@ test('global search and column filters return original rows when filters are emp
   assert.equal(applyColumnFilters(rows, { name: '   ' }), rows);
 });
 
+
+test('column filters: no filters returns all rows', () => {
+  const rows = [{ name: 'Alice' }, { name: 'Bob' }];
+
+  assert.equal(applyColumnFilters(rows), rows);
+  assert.equal(applyColumnFilters(rows, { name: '' }), rows);
+  assert.equal(applyColumnFilters(rows, { name: [{ value: '   ' }] }), rows);
+});
+
+test('column filters: single include filter', () => {
+  const rows = [{ name: 'Alice' }, { name: 'Bob' }];
+
+  assert.deepEqual(applyColumnFilters(rows, { name: 'ali' }), [{ name: 'Alice' }]);
+});
+
+test('column filters: multiple include filters on the same column use OR semantics', () => {
+  const rows = [{ name: 'Alice' }, { name: 'Bob' }, { name: 'Carol' }];
+
+  assert.deepEqual(applyColumnFilters(rows, { name: ['ali', 'car'] }), [
+    { name: 'Alice' },
+    { name: 'Carol' }
+  ]);
+});
+
+test('column filters: include filters on different columns use AND semantics', () => {
+  const rows = [
+    { name: 'Alice', team: 'red' },
+    { name: 'Alice', team: 'blue' },
+    { name: 'Bob', team: 'red' }
+  ];
+
+  assert.deepEqual(applyColumnFilters(rows, { name: 'ali', team: 'red' }), [
+    { name: 'Alice', team: 'red' }
+  ]);
+});
+
+test('column filters: single exclude filter', () => {
+  const rows = [{ name: 'Alice' }, { name: 'Bob' }, { name: 'Carol' }];
+
+  assert.deepEqual(applyColumnFilters(rows, { name: { mode: 'exclude', value: 'bo' } }), [
+    { name: 'Alice' },
+    { name: 'Carol' }
+  ]);
+});
+
+test('column filters: multiple exclude filters reject if any matches', () => {
+  const rows = [{ name: 'Alice' }, { name: 'Bob' }, { name: 'Carol' }, { name: 'Dave' }];
+
+  assert.deepEqual(applyColumnFilters(rows, {
+    name: [
+      { mode: 'exclude', value: 'bo' },
+      { mode: 'exclude', value: 'ar' }
+    ]
+  }), [
+    { name: 'Alice' },
+    { name: 'Dave' }
+  ]);
+});
+
+test('column filters: include plus exclude on the same column', () => {
+  const rows = [{ name: 'Alice' }, { name: 'Alicia' }, { name: 'Bob' }];
+
+  assert.deepEqual(applyColumnFilters(rows, {
+    name: ['ali', { mode: 'exclude', value: 'cia' }]
+  }), [
+    { name: 'Alice' }
+  ]);
+});
+
+test('column filters: case-insensitive matching', () => {
+  const rows = [{ city: 'New York' }, { city: 'boston' }];
+
+  assert.equal(matchesColumnFilter('New York', 'NEW'), true);
+  assert.deepEqual(applyColumnFilters(rows, { city: 'BOS' }), [{ city: 'boston' }]);
+});
+
+test('column filters: empty filter values are ignored', () => {
+  const rows = [{ name: 'Alice' }, { name: 'Bob' }];
+
+  assert.deepEqual(applyColumnFilters(rows, { name: ['', { mode: 'exclude', value: ' ' }, 'bo'] }), [
+    { name: 'Bob' }
+  ]);
+});
+
+test('column filters: missing cell values and unknown columns do not throw', () => {
+  const rows = [{ name: 'Alice' }, { city: 'Boston' }];
+
+  assert.equal(rowMatchesColumnFilters(rows[0], { city: { mode: 'exclude', value: 'bos' } }), true);
+  assert.equal(rowMatchesColumnFilters(rows[0], { city: 'bos' }), false);
+  assert.deepEqual(applyColumnFilters(rows, { unknown: { mode: 'exclude', value: 'anything' } }), rows);
+  assert.deepEqual(applyColumnFilters(rows, { unknown: 'anything' }), []);
+});
+
 test('applyTablePipeline searches, filters, sorts with inferred numeric type, and limits', () => {
   const rows = [
     { name: 'Alice', team: 'red', score: '2' },
