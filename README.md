@@ -87,3 +87,31 @@ scripts that delete files or modify system configuration.
 - [`tampermonkey/edx-download-transcripts.js`](tampermonkey/edx-download-transcripts.js) - Tampermonkey userscript that adds an edX button for downloading a video's transcript as text.
 - [`csv-explorer.html`](csv-explorer.html) - Browser-based CSV explorer for loading local CSV files, viewing rows, and calculating per-column statistics. Because it imports [`csv-explorer-core.js`](csv-explorer-core.js) as a native ES module, open it through a local HTTP server instead of a `file://` URL during local use: run `pnpm install`, then `pnpm start`, then open the Vite localhost landing page and choose CSV Explorer.
 - [`json-explorer.html`](json-explorer.html) - Browser-based JSON explorer for inspecting JSON with searchable tree and table views.
+
+### csv-explorer.html manual QA checklist
+
+TODO: Convert this manual checklist into an automated browser test in the future.
+
+Keep this checklist as documentation-only manual coverage unless a browser test
+framework is introduced later.
+
+Sample CSV: [`csv-explorer-sample.csv`](csv-explorer-sample.csv)
+
+1. Open [`csv-explorer.html`](csv-explorer.html) in a browser and load
+   [`csv-explorer-sample.csv`](csv-explorer-sample.csv). Confirm the rows
+   render and column statistics appear.
+2. Use global search for `Data`; confirm only Cora and Drew remain visible.
+3. Add an include filter on `Status` for `Active`; confirm Ada, Cora, and Eli
+   are visible.
+4. Add multiple include filters on the `Team` column for `Platform` and `Data`;
+   confirm Ada, Ben, Cora, and Drew are visible before any other filters are
+   applied.
+5. Add an exclude filter on `Status` for `Inactive`; confirm Ben is hidden.
+6. With filters still applied, sort by `Score`; confirm the filtered rows sort
+   by score rather than restoring filtered-out rows.
+7. Set a row limit after filtering; confirm the displayed row count is capped
+   after search and column filters are applied.
+8. Clear filters and search; confirm all five sample rows are visible again.
+9. Load a different CSV file; confirm search text, include filters, exclude
+   filters, sort order, row limit, selected columns, and row data reset for the
+   new file.
