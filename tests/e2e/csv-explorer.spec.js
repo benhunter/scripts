@@ -125,3 +125,19 @@ test('supports multiple same-column filters, removal, and clearing', async ({ pa
   await expect(page.locator('#shownCount')).toHaveText('4');
   await expectVisibleDataRows(page, ['Alice', 'Bob', 'Carol', 'Dave']);
 });
+
+test('orders active filter chips by the applied column-filter precedence', async ({ page }) => {
+  await loadPeopleCsv(page);
+
+  await addColumnFilter(page, { column: 'note', value: 'hello' });
+  await addColumnFilter(page, { column: 'note', mode: 'exclude', value: 'plain' });
+
+  const chips = page.locator('#activeFilters .filter-chip');
+  await expect(chips).toHaveCount(2);
+  await expect(chips.nth(0)).toContainText('Exclude');
+  await expect(chips.nth(0)).toContainText('plain');
+  await expect(chips.nth(1)).toContainText('Include');
+  await expect(chips.nth(1)).toContainText('hello');
+  await expect(page.locator('#shownCount')).toHaveText('1');
+  await expectVisibleDataRows(page, ['Alice']);
+});

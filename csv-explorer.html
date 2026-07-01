@@ -369,7 +369,7 @@ import {
       rows,
       headers,
       query: tableSearchEl.value,
-      filters: columnFilters,
+      filters: orderedColumnFiltersForPipeline(),
       sort: dataSort,
       limit: rowLimitEl.value,
       statsMap: allStats,
@@ -593,6 +593,33 @@ import {
     return Object.values(columnFilters).reduce((sum, filters) => sum + filters.length, 0);
   }
 
+  function orderedColumnNamesWithFilters() {
+    return [
+      ...headers.filter(h => columnFilters[h]?.length),
+      ...Object.keys(columnFilters).filter(h => !headers.includes(h) && columnFilters[h]?.length)
+    ];
+  }
+
+  function orderedFiltersForColumn(column) {
+    const modeRank = { exclude: 0, include: 1 };
+    return (columnFilters[column] || [])
+      .map((filter, index) => ({ filter, index }))
+      .sort((a, b) => {
+        const am = modeRank[a.filter.mode] ?? modeRank.include;
+        const bm = modeRank[b.filter.mode] ?? modeRank.include;
+        if (am !== bm) return am - bm;
+        return a.index - b.index;
+      });
+  }
+
+  function orderedColumnFiltersForPipeline() {
+    const ordered = {};
+    for (const column of orderedColumnNamesWithFilters()) {
+      ordered[column] = orderedFiltersForColumn(column).map(({ filter }) => filter);
+    }
+    return ordered;
+  }
+
   function renderActiveFilters() {
     const count = activeFilterCount();
     activeFilterCountEl.textContent = String(count);
@@ -607,15 +634,7 @@ import {
       return;
     }
 
-    const orderedColumns = [
-      ...headers.filter(h => columnFilters[h]?.length),
-      ...Object.keys(columnFilters).filter(h => !headers.includes(h))
-    ];
-
-    for (const column of orderedColumns) {
-      const filters = columnFilters[column] || [];
-      if (!filters.length) continue;
-
+    for (const column of orderedColumnNamesWithFilters()) {
       const group = document.createElement('div');
       group.className = 'filter-group';
       group.dataset.column = column;
@@ -625,7 +644,7 @@ import {
       groupName.textContent = column;
       group.appendChild(groupName);
 
-      filters.forEach((filter, index) => {
+      for (const { filter, index } of orderedFiltersForColumn(column)) {
         const chip = document.createElement('span');
         chip.className = 'filter-chip';
         chip.dataset.mode = filter.mode;
@@ -649,7 +668,7 @@ import {
         chip.appendChild(value);
         chip.appendChild(remove);
         group.appendChild(chip);
-      });
+      }
 
       activeFiltersEl.appendChild(group);
     }
