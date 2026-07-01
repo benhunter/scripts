@@ -69,10 +69,62 @@ test('filter helpers normalize text and match per-column filters', () => {
   assert.equal(rowMatchesColumnFilters(row, { city: 'new', state: 'ca' }), false);
 });
 
-test('global search and column filters return original rows when filters are empty', () => {
+test('global search returns original rows for empty or whitespace-only queries', () => {
   const rows = [{ name: 'Alice' }, { name: 'Bob' }];
 
   assert.equal(applyGlobalSearch(rows, ['name'], ''), rows);
+  assert.equal(applyGlobalSearch(rows, ['name'], '   '), rows);
+});
+
+test('global search performs case-insensitive substring matching', () => {
+  const rows = [{ name: 'Alice' }, { name: 'Bob' }];
+
+  assert.deepEqual(applyGlobalSearch(rows, ['name'], 'LIC'), [{ name: 'Alice' }]);
+});
+
+test('global search matches in any provided column', () => {
+  const rows = [
+    { name: 'Alice', city: 'Paris' },
+    { name: 'Bob', city: 'Redmond' },
+    { name: 'Frederick', city: 'Rome' }
+  ];
+
+  assert.deepEqual(applyGlobalSearch(rows, ['name', 'city'], 'red'), [
+    { name: 'Bob', city: 'Redmond' },
+    { name: 'Frederick', city: 'Rome' }
+  ]);
+});
+
+test('global search returns an empty array when no rows match', () => {
+  const rows = [{ name: 'Alice' }, { name: 'Bob' }];
+
+  assert.deepEqual(applyGlobalSearch(rows, ['name'], 'carol'), []);
+});
+
+test('global search ignores nullish cell values without throwing', () => {
+  const rows = [
+    { name: null, city: 'Paris' },
+    { name: undefined, city: 'Lisbon' },
+    { name: 'Carol', city: null }
+  ];
+
+  assert.deepEqual(applyGlobalSearch(rows, ['name', 'city'], 'lisbon'), [
+    { name: undefined, city: 'Lisbon' }
+  ]);
+});
+
+test('global search only searches provided headers', () => {
+  const rows = [
+    { name: 'Alice', hidden: 'secret' },
+    { name: 'Bob', hidden: 'public' }
+  ];
+
+  assert.deepEqual(applyGlobalSearch(rows, ['name'], 'secret'), []);
+});
+
+test('column filters return original rows when filters are empty', () => {
+  const rows = [{ name: 'Alice' }, { name: 'Bob' }];
+
   assert.equal(applyColumnFilters(rows, { name: '   ' }), rows);
 });
 

@@ -137,6 +137,7 @@
 
 <script type="module">
 import {
+  applyGlobalSearch,
   applyTablePipeline,
   detectDelimiter,
   isNullish,
@@ -296,10 +297,10 @@ import {
     tableStatusEl.textContent = 'Filtering…';
     tableStatusEl.classList.remove('muted');
 
-    const filtered = applyTablePipeline({
-      rows,
+    const searchedRows = applyGlobalSearch(rows, headers, tableSearchEl.value);
+    const filteredRows = applyTablePipeline({
+      rows: searchedRows,
       headers,
-      query: tableSearchEl.value,
       filters: {},
       sort: dataSort,
       limit: rowLimitEl.value,
@@ -307,8 +308,8 @@ import {
       nullSet: getNullTokenSet()
     });
 
-    shownCountEl.textContent = String(filtered.length);
-    renderDataTableChunked(headers, filtered);
+    shownCountEl.textContent = String(filteredRows.length);
+    renderDataTableChunked(headers, filteredRows);
   }
 
   function renderDataTableChunked(headers, dataRows) {

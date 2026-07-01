@@ -175,10 +175,10 @@ export function rowMatchesColumnFilters(row, filters = {}) {
   return true;
 }
 
-export function applyGlobalSearch(rows, headers, query) {
+export function applyGlobalSearch(rows = [], headers = [], query = '') {
   const q = normalizeFilterText(query);
   if (!q) return rows;
-  return rows.filter(r => headers.some(h => normalizeFilterText(r[h]).includes(q)));
+  return rows.filter(row => headers.some(header => normalizeFilterText(row?.[header]).includes(q)));
 }
 
 export function applyColumnFilters(rows, filters = {}) {
