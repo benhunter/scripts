@@ -1,0 +1,5 @@
+name,team,score,note
+Alice,red,2,"hello, world"
+Bob,blue,10,"said ""hi"""
+Carol,blue,,N/A
+Dave,blue,3,plain
