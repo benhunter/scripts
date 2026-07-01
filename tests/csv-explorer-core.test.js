@@ -76,27 +76,138 @@ test('global search and column filters return original rows when filters are emp
   assert.equal(applyColumnFilters(rows, { name: '   ' }), rows);
 });
 
-test('applyTablePipeline searches, filters, sorts with inferred numeric type, and limits', () => {
+test('applyTablePipeline applies global search plus column include/exclude filters', () => {
   const rows = [
-    { name: 'Alice', team: 'red', score: '2' },
-    { name: 'Bob', team: 'blue', score: '10' },
-    { name: 'Carol', team: 'blue', score: '' },
-    { name: 'Dave', team: 'blue', score: '3' }
+    { name: 'Alice', team: 'red', role: 'lead' },
+    { name: 'Bob', team: 'blue', role: 'backup' },
+    { name: 'Carol', team: 'blue', role: 'lead' },
+    { name: 'Dave', team: 'green', role: 'lead' }
   ];
-  const headers = ['name', 'team', 'score'];
-  const nullSet = new Set();
-  const statsMap = new Map(headers.map(h => [h, summarizeColumn(h, rows, nullSet)]));
 
   const result = applyTablePipeline({
     rows,
-    headers,
-    query: 'blue',
-    filters: { name: '' },
+    headers: ['name', 'team', 'role'],
+    query: 'lead',
+    filters: { team: { include: 'e', exclude: 'gr' } }
+  });
+
+  assert.deepEqual(result.map(r => r.name), ['Alice', 'Carol']);
+});
+
+test('applyTablePipeline sorts after filtering', () => {
+  const rows = [
+    { name: 'Alice', team: 'red' },
+    { name: 'Carol', team: 'blue' },
+    { name: 'Bob', team: 'blue' }
+  ];
+
+  const result = applyTablePipeline({
+    rows,
+    headers: ['name', 'team'],
+    filters: { team: 'blue' },
+    sort: { key: 'name', dir: 'asc' }
+  });
+
+  assert.deepEqual(result.map(r => r.name), ['Bob', 'Carol']);
+});
+
+test('applyTablePipeline applies limit after sorting', () => {
+  const rows = [
+    { name: 'Alice', score: '2' },
+    { name: 'Bob', score: '10' },
+    { name: 'Carol', score: '3' }
+  ];
+  const statsMap = new Map([['score', summarizeColumn('score', rows)]]);
+
+  const result = applyTablePipeline({
+    rows,
+    headers: ['name', 'score'],
     sort: { key: 'score', dir: 'desc' },
     limit: 2,
+    statsMap
+  });
+
+  assert.deepEqual(result.map(r => r.name), ['Bob', 'Carol']);
+});
+
+test('applyTablePipeline uses inferred numeric stats for numeric sort', () => {
+  const rows = [
+    { name: 'two', score: '2' },
+    { name: 'ten', score: '10' },
+    { name: 'one', score: '1' }
+  ];
+  const statsMap = new Map([['score', summarizeColumn('score', rows)]]);
+
+  const result = applyTablePipeline({
+    rows,
+    headers: ['name', 'score'],
+    sort: { key: 'score', dir: 'asc' },
+    statsMap
+  });
+
+  assert.deepEqual(result.map(r => r.name), ['one', 'two', 'ten']);
+});
+
+test('applyTablePipeline sorts text columns lexically', () => {
+  const rows = [
+    { name: 'charlie' },
+    { name: 'Alice' },
+    { name: 'bob' }
+  ];
+
+  const result = applyTablePipeline({
+    rows,
+    headers: ['name'],
+    sort: { key: 'name', dir: 'asc' }
+  });
+
+  assert.deepEqual(result.map(r => r.name), ['Alice', 'bob', 'charlie']);
+});
+
+test('applyTablePipeline keeps nulls at the bottom for ascending and descending sort', () => {
+  const rows = [
+    { name: 'blank', score: '' },
+    { name: 'ten', score: '10' },
+    { name: 'na', score: 'N/A' },
+    { name: 'two', score: '2' }
+  ];
+  const nullSet = new Set(['N/A']);
+  const statsMap = new Map([['score', summarizeColumn('score', rows, nullSet)]]);
+
+  const asc = applyTablePipeline({
+    rows,
+    headers: ['name', 'score'],
+    sort: { key: 'score', dir: 'asc' },
+    statsMap,
+    nullSet
+  });
+  const desc = applyTablePipeline({
+    rows,
+    headers: ['name', 'score'],
+    sort: { key: 'score', dir: 'desc' },
     statsMap,
     nullSet
   });
 
-  assert.deepEqual(result.map(r => r.name), ['Bob', 'Dave']);
+  assert.deepEqual(asc.map(r => r.name), ['two', 'ten', 'blank', 'na']);
+  assert.deepEqual(desc.map(r => r.name), ['ten', 'two', 'blank', 'na']);
+});
+
+test('applyTablePipeline preserves stable sort order for ties', () => {
+  const rows = [
+    { name: 'first', score: '2' },
+    { name: 'winner', score: '10' },
+    { name: 'second', score: '2' },
+    { name: 'third', score: '2' }
+  ];
+  const statsMap = new Map([['score', summarizeColumn('score', rows)]]);
+
+  const result = applyTablePipeline({
+    rows,
+    headers: ['name', 'score'],
+    sort: { key: 'score', dir: 'asc' },
+    statsMap
+  });
+
+  assert.deepEqual(result.map(r => r.name), ['first', 'second', 'third', 'winner']);
 });
