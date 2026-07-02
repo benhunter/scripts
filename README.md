@@ -106,6 +106,8 @@ must pass. Missing or unknown cell values are treated as empty strings.
 | --- | --- | --- |
 | Copy visible table as Markdown | Complete | Copies the table headers and currently visible rows as a Markdown table. |
 | Copy visible table as CSV | Complete | Copies the table headers and currently visible rows as CSV. |
+| Copy visible table as JSON | Planned | Copies the table headers and currently visible rows as JSON. |
+| Save visible table as CSV | Planned | Saves the table headers and currently visible rows as a CSV file. |
 
 ### CSV Explorer manual QA checklist
 
