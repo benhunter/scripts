@@ -157,6 +157,8 @@
       <span class="pill muted">Sort: <span id="dataSortLabel">none</span></span>
       <button id="copyMarkdownBtn" class="btn" type="button" disabled>Copy Markdown</button>
       <span id="copyMarkdownStatus" class="pill muted" aria-live="polite">Nothing copied</span>
+      <button id="copyCsvBtn" class="btn" type="button" disabled>Copy CSV</button>
+      <span id="copyCsvStatus" class="pill muted" aria-live="polite">Nothing copied</span>
     </div>
 
     <div class="filter-panel" id="columnFiltersPanel">
@@ -188,6 +190,7 @@ import {
   detectDelimiter,
   isNullish,
   parseCsv,
+  rowsToCsv,
   rowsToMarkdownTable,
   summarizeColumn
 } from './csv-explorer-core.js';
@@ -233,6 +236,8 @@ import {
   const dataSortLabelEl = document.getElementById('dataSortLabel');
   const copyMarkdownBtn = document.getElementById('copyMarkdownBtn');
   const copyMarkdownStatusEl = document.getElementById('copyMarkdownStatus');
+  const copyCsvBtn = document.getElementById('copyCsvBtn');
+  const copyCsvStatusEl = document.getElementById('copyCsvStatus');
 
   // In-memory dataset
   let headers = [];
@@ -260,11 +265,12 @@ import {
     statusEl.classList.remove('muted');
     recomputeBtn.disabled = true;
     copyMarkdownBtn.disabled = true;
+    copyCsvBtn.disabled = true;
     headers = [];
     rows = [];
     allStats = new Map();
     currentVisibleRows = [];
-    resetCopyMarkdownStatus();
+    resetCopyStatuses();
 
     statsStatusEl.textContent = 'Stats not computed';
     statsStatusEl.classList.add('muted');
@@ -322,8 +328,9 @@ import {
       dataCard.style.display = 'none';
       recomputeBtn.disabled = true;
       copyMarkdownBtn.disabled = true;
+      copyCsvBtn.disabled = true;
       currentVisibleRows = [];
-      resetCopyMarkdownStatus();
+      resetCopyStatuses();
     }
   });
 
@@ -368,6 +375,7 @@ import {
   });
   addFilterBtn.addEventListener('click', addColumnFilterFromForm);
   copyMarkdownBtn.addEventListener('click', copyVisibleRowsAsMarkdown);
+  copyCsvBtn.addEventListener('click', copyVisibleRowsAsCsv);
   clearFiltersBtn.addEventListener('click', () => {
     if (activeFilterCount() === 0) return;
     columnFilters = {};
@@ -394,7 +402,7 @@ import {
 
     currentVisibleRows = dataRows;
     shownCountEl.textContent = String(dataRows.length);
-    resetCopyMarkdownStatus();
+    resetCopyStatuses();
     renderDataTableChunked(headers, dataRows);
   }
 
@@ -702,6 +710,17 @@ import {
     copyMarkdownBtn.disabled = headers.length === 0;
   }
 
+  function resetCopyCsvStatus() {
+    copyCsvStatusEl.textContent = headers.length ? 'Ready to copy' : 'Nothing copied';
+    copyCsvStatusEl.classList.add('muted');
+    copyCsvBtn.disabled = headers.length === 0;
+  }
+
+  function resetCopyStatuses() {
+    resetCopyMarkdownStatus();
+    resetCopyCsvStatus();
+  }
+
   async function copyVisibleRowsAsMarkdown() {
     if (!headers.length) return;
 
@@ -719,6 +738,26 @@ import {
       showError(err?.message || String(err));
     } finally {
       copyMarkdownBtn.disabled = headers.length === 0;
+    }
+  }
+
+  async function copyVisibleRowsAsCsv() {
+    if (!headers.length) return;
+
+    copyCsvBtn.disabled = true;
+    copyCsvStatusEl.textContent = 'Copying…';
+    copyCsvStatusEl.classList.remove('muted');
+
+    try {
+      const csv = rowsToCsv(headers, currentVisibleRows);
+      await writeClipboardText(csv);
+      const rowLabel = currentVisibleRows.length === 1 ? 'row' : 'rows';
+      copyCsvStatusEl.textContent = `Copied ${formatInt(currentVisibleRows.length)} ${rowLabel}`;
+    } catch (err) {
+      copyCsvStatusEl.textContent = 'Copy failed';
+      showError(err?.message || String(err));
+    } finally {
+      copyCsvBtn.disabled = headers.length === 0;
     }
   }
 

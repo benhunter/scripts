@@ -305,3 +305,23 @@ export function rowsToMarkdownTable(headers = [], rows = []) {
     ...safeRows.map(renderRow)
   ].join('\n');
 }
+
+function formatCsvCell(value) {
+  const s = String(value ?? '');
+  if (/[",\n\r]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+export function rowsToCsv(headers = [], rows = []) {
+  if (!Array.isArray(headers) || headers.length === 0) return '';
+
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const renderRow = (row) => headers.map(header => formatCsvCell(row?.[header])).join(',');
+
+  return [
+    headers.map(formatCsvCell).join(','),
+    ...safeRows.map(renderRow)
+  ].join('\n');
+}

@@ -164,3 +164,25 @@ test('copies the currently visible table as Markdown', async ({ page, context })
     '| Carol | blue |  | N/A |'
   );
 });
+
+test('copies the currently visible table as CSV', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:5173' });
+  await loadPeopleCsv(page);
+
+  await page.locator('#tableSearch').fill('blue');
+  await page.locator('#dataWrap th').filter({ hasText: 'score' }).click();
+  await addColumnFilter(page, { column: 'note', mode: 'exclude', value: 'plain' });
+
+  await expectVisibleDataRows(page, ['Bob', 'Carol']);
+  await page.locator('#copyCsvBtn').click();
+
+  await expect(page.locator('#copyCsvStatus')).toHaveText('Copied 2 rows');
+  await expect.poll(async () => {
+    const text = await page.evaluate(() => navigator.clipboard.readText());
+    return text.replace(/\r\n/g, '\n');
+  }).toBe(
+    'name,team,score,note\n' +
+    'Bob,blue,10,"said ""hi"""\n' +
+    'Carol,blue,,N/A'
+  );
+});
