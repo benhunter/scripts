@@ -12,6 +12,7 @@ import {
   normalizeFilterText,
   parseCsv,
   rowMatchesColumnFilters,
+  rowsToMarkdownTable,
   summarizeColumn
 } from '../csv-explorer-core.js';
 
@@ -429,4 +430,37 @@ test('applyTablePipeline preserves stable sort order for ties', () => {
   });
 
   assert.deepEqual(result.map(r => r.name), ['first', 'second', 'third', 'winner']);
+});
+
+test('rowsToMarkdownTable serializes rows in header order', () => {
+  const rows = [
+    { name: 'Alice', score: '2', hidden: 'ignored' },
+    { name: 'Bob', score: '10', hidden: 'ignored' }
+  ];
+
+  assert.equal(
+    rowsToMarkdownTable(['name', 'score'], rows),
+    '| name | score |\n| --- | --- |\n| Alice | 2 |\n| Bob | 10 |'
+  );
+});
+
+test('rowsToMarkdownTable escapes table pipes and converts multiline cells', () => {
+  const rows = [
+    { name: 'A|B', note: 'line 1\r\nline 2|done' }
+  ];
+
+  assert.equal(
+    rowsToMarkdownTable(['name', 'note'], rows),
+    '| name | note |\n| --- | --- |\n| A\\|B | line 1<br>line 2\\|done |'
+  );
+});
+
+test('rowsToMarkdownTable renders nullish cells as empty and supports zero rows', () => {
+  const headers = ['name', 'score'];
+
+  assert.equal(
+    rowsToMarkdownTable(headers, [{ name: null }, { name: 'Bob', score: undefined }]),
+    '| name | score |\n| --- | --- |\n|  |  |\n| Bob |  |'
+  );
+  assert.equal(rowsToMarkdownTable(headers, []), '| name | score |\n| --- | --- |');
 });
