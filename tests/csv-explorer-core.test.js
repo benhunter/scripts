@@ -12,6 +12,7 @@ import {
   normalizeFilterText,
   parseCsv,
   rowMatchesColumnFilters,
+  rowsToCsv,
   rowsToMarkdownTable,
   summarizeColumn
 } from '../csv-explorer-core.js';
@@ -463,4 +464,38 @@ test('rowsToMarkdownTable renders nullish cells as empty and supports zero rows'
     '| name | score |\n| --- | --- |\n|  |  |\n| Bob |  |'
   );
   assert.equal(rowsToMarkdownTable(headers, []), '| name | score |\n| --- | --- |');
+});
+
+test('rowsToCsv serializes rows in header order', () => {
+  const rows = [
+    { name: 'Alice', score: '2', hidden: 'ignored' },
+    { name: 'Bob', score: '10', hidden: 'ignored' }
+  ];
+
+  assert.equal(
+    rowsToCsv(['name', 'score'], rows),
+    'name,score\nAlice,2\nBob,10'
+  );
+});
+
+test('rowsToCsv escapes quotes, commas, and multiline cells', () => {
+  const rows = [
+    { name: 'A,B', note: 'said "hi"\r\nthen left' }
+  ];
+
+  assert.equal(
+    rowsToCsv(['name', 'note'], rows),
+    'name,note\n"A,B","said ""hi""\r\nthen left"'
+  );
+});
+
+test('rowsToCsv renders nullish cells as empty and supports zero rows', () => {
+  const headers = ['name', 'score'];
+
+  assert.equal(
+    rowsToCsv(headers, [{ name: null }, { name: 'Bob', score: undefined }]),
+    'name,score\n,\nBob,'
+  );
+  assert.equal(rowsToCsv(headers, []), 'name,score');
+  assert.equal(rowsToCsv([], [{ name: 'Alice' }]), '');
 });

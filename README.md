@@ -105,6 +105,7 @@ must pass. Missing or unknown cell values are treated as empty strings.
 | Feature | Status | Notes |
 | --- | --- | --- |
 | Copy visible table as Markdown | Complete | Copies the table headers and currently visible rows as a Markdown table. |
+| Copy visible table as CSV | Complete | Copies the table headers and currently visible rows as CSV. |
 
 ### CSV Explorer manual QA checklist
 
@@ -127,8 +128,8 @@ Sample CSV: [`csv-explorer-sample.csv`](csv-explorer-sample.csv)
    sort numerically rather than lexicographically.
 5. Set the row limit to `1,000`; confirm the displayed row count still reflects
    the current search result because the sample has fewer than 1,000 rows.
-6. Click **Copy Markdown**; paste into a text editor and confirm the Markdown
-   table includes the headers and the currently visible rows only.
+6. Click **Copy Markdown** and **Copy CSV**; paste each result into a text
+   editor and confirm both include the headers and currently visible rows only.
 7. Click a column name in the all-column statistics table; confirm the column
    profile section scrolls into view and shows top values plus KPIs for that
    column.
