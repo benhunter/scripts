@@ -13,6 +13,7 @@ import {
   parseCsv,
   rowMatchesColumnFilters,
   rowsToCsv,
+  rowsToJson,
   rowsToMarkdownTable,
   summarizeColumn
 } from '../csv-explorer-core.js';
@@ -498,4 +499,45 @@ test('rowsToCsv renders nullish cells as empty and supports zero rows', () => {
   );
   assert.equal(rowsToCsv(headers, []), 'name,score');
   assert.equal(rowsToCsv([], [{ name: 'Alice' }]), '');
+});
+
+test('rowsToJson serializes rows in header order and omits hidden fields', () => {
+  const rows = [
+    { name: 'Alice', score: '2', hidden: 'ignored' },
+    { name: 'Bob', score: '10', hidden: 'ignored' }
+  ];
+
+  assert.equal(
+    rowsToJson(['name', 'score'], rows),
+    '[\n' +
+    '  {\n' +
+    '    "name": "Alice",\n' +
+    '    "score": "2"\n' +
+    '  },\n' +
+    '  {\n' +
+    '    "name": "Bob",\n' +
+    '    "score": "10"\n' +
+    '  }\n' +
+    ']'
+  );
+});
+
+test('rowsToJson renders nullish cells as empty and supports zero rows', () => {
+  const headers = ['name', 'score'];
+
+  assert.equal(
+    rowsToJson(headers, [{ name: null }, { name: 'Bob', score: undefined }]),
+    '[\n' +
+    '  {\n' +
+    '    "name": "",\n' +
+    '    "score": ""\n' +
+    '  },\n' +
+    '  {\n' +
+    '    "name": "Bob",\n' +
+    '    "score": ""\n' +
+    '  }\n' +
+    ']'
+  );
+  assert.equal(rowsToJson(headers, []), '[]');
+  assert.equal(rowsToJson([], [{ name: 'Alice' }]), '');
 });

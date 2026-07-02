@@ -186,3 +186,36 @@ test('copies the currently visible table as CSV', async ({ page, context }) => {
     'Carol,blue,,N/A'
   );
 });
+
+test('copies the currently visible table as JSON', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:5173' });
+  await loadPeopleCsv(page);
+
+  await page.locator('#tableSearch').fill('blue');
+  await page.locator('#dataWrap th').filter({ hasText: 'score' }).click();
+  await addColumnFilter(page, { column: 'note', mode: 'exclude', value: 'plain' });
+
+  await expectVisibleDataRows(page, ['Bob', 'Carol']);
+  await page.locator('#copyJsonBtn').click();
+
+  await expect(page.locator('#copyJsonStatus')).toHaveText('Copied 2 rows');
+  await expect.poll(async () => {
+    const text = await page.evaluate(() => navigator.clipboard.readText());
+    return text.replace(/\r\n/g, '\n');
+  }).toBe(
+    '[\n' +
+    '  {\n' +
+    '    "name": "Bob",\n' +
+    '    "team": "blue",\n' +
+    '    "score": "10",\n' +
+    '    "note": "said \\"hi\\""\n' +
+    '  },\n' +
+    '  {\n' +
+    '    "name": "Carol",\n' +
+    '    "team": "blue",\n' +
+    '    "score": "",\n' +
+    '    "note": "N/A"\n' +
+    '  }\n' +
+    ']'
+  );
+});
