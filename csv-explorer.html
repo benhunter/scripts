@@ -155,6 +155,8 @@
       </select>
       <span class="pill muted">Showing <span id="shownCount">0</span></span>
       <span class="pill muted">Sort: <span id="dataSortLabel">none</span></span>
+      <button id="copyMarkdownBtn" class="btn" type="button" disabled>Copy Markdown</button>
+      <span id="copyMarkdownStatus" class="pill muted" aria-live="polite">Nothing copied</span>
     </div>
 
     <div class="filter-panel" id="columnFiltersPanel">
@@ -186,6 +188,7 @@ import {
   detectDelimiter,
   isNullish,
   parseCsv,
+  rowsToMarkdownTable,
   summarizeColumn
 } from './csv-explorer-core.js';
 
@@ -228,6 +231,8 @@ import {
   const dataWrapEl = document.getElementById('dataWrap');
   const shownCountEl = document.getElementById('shownCount');
   const dataSortLabelEl = document.getElementById('dataSortLabel');
+  const copyMarkdownBtn = document.getElementById('copyMarkdownBtn');
+  const copyMarkdownStatusEl = document.getElementById('copyMarkdownStatus');
 
   // In-memory dataset
   let headers = [];
@@ -244,6 +249,7 @@ import {
 
   // Table render state
   let tableRenderToken = 0;
+  let currentVisibleRows = [];
 
   fileInput.addEventListener('change', async (e) => {
     clearError();
@@ -253,6 +259,12 @@ import {
     statusEl.textContent = 'Loading…';
     statusEl.classList.remove('muted');
     recomputeBtn.disabled = true;
+    copyMarkdownBtn.disabled = true;
+    headers = [];
+    rows = [];
+    allStats = new Map();
+    currentVisibleRows = [];
+    resetCopyMarkdownStatus();
 
     statsStatusEl.textContent = 'Stats not computed';
     statsStatusEl.classList.add('muted');
@@ -309,6 +321,9 @@ import {
       profileCard.style.display = 'none';
       dataCard.style.display = 'none';
       recomputeBtn.disabled = true;
+      copyMarkdownBtn.disabled = true;
+      currentVisibleRows = [];
+      resetCopyMarkdownStatus();
     }
   });
 
@@ -352,6 +367,7 @@ import {
     addColumnFilterFromForm();
   });
   addFilterBtn.addEventListener('click', addColumnFilterFromForm);
+  copyMarkdownBtn.addEventListener('click', copyVisibleRowsAsMarkdown);
   clearFiltersBtn.addEventListener('click', () => {
     if (activeFilterCount() === 0) return;
     columnFilters = {};
@@ -376,7 +392,9 @@ import {
       nullSet: getNullTokenSet()
     });
 
+    currentVisibleRows = dataRows;
     shownCountEl.textContent = String(dataRows.length);
+    resetCopyMarkdownStatus();
     renderDataTableChunked(headers, dataRows);
   }
 
@@ -676,6 +694,53 @@ import {
 
   function updateAddFilterButton() {
     addFilterBtn.disabled = filterColumnEl.disabled || !filterColumnEl.value || filterValueEl.value.trim().length === 0;
+  }
+
+  function resetCopyMarkdownStatus() {
+    copyMarkdownStatusEl.textContent = headers.length ? 'Ready to copy' : 'Nothing copied';
+    copyMarkdownStatusEl.classList.add('muted');
+    copyMarkdownBtn.disabled = headers.length === 0;
+  }
+
+  async function copyVisibleRowsAsMarkdown() {
+    if (!headers.length) return;
+
+    copyMarkdownBtn.disabled = true;
+    copyMarkdownStatusEl.textContent = 'Copying…';
+    copyMarkdownStatusEl.classList.remove('muted');
+
+    try {
+      const markdown = rowsToMarkdownTable(headers, currentVisibleRows);
+      await writeClipboardText(markdown);
+      const rowLabel = currentVisibleRows.length === 1 ? 'row' : 'rows';
+      copyMarkdownStatusEl.textContent = `Copied ${formatInt(currentVisibleRows.length)} ${rowLabel}`;
+    } catch (err) {
+      copyMarkdownStatusEl.textContent = 'Copy failed';
+      showError(err?.message || String(err));
+    } finally {
+      copyMarkdownBtn.disabled = headers.length === 0;
+    }
+  }
+
+  async function writeClipboardText(text) {
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+      if (!document.execCommand('copy')) throw new Error('Clipboard copy was not accepted by the browser.');
+    } finally {
+      textarea.remove();
+    }
   }
 
   function getNullTokenSet() {

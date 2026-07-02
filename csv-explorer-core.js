@@ -285,3 +285,23 @@ export function applyTablePipeline({ rows, headers, query = '', filters = {}, so
   if (n > 0) result = result.slice(0, n);
   return result;
 }
+
+function formatMarkdownTableCell(value) {
+  if (value == null) return '';
+  return String(value)
+    .replace(/\r\n|\r|\n/g, '<br>')
+    .replace(/\|/g, '\\|');
+}
+
+export function rowsToMarkdownTable(headers = [], rows = []) {
+  if (!Array.isArray(headers) || headers.length === 0) return '';
+
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const renderRow = (row) => `| ${headers.map(header => formatMarkdownTableCell(row?.[header])).join(' | ')} |`;
+
+  return [
+    `| ${headers.map(formatMarkdownTableCell).join(' | ')} |`,
+    `| ${headers.map(() => '---').join(' | ')} |`,
+    ...safeRows.map(renderRow)
+  ].join('\n');
+}
