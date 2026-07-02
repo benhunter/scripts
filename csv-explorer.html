@@ -159,6 +159,8 @@
       <span id="copyMarkdownStatus" class="pill muted" aria-live="polite">Nothing copied</span>
       <button id="copyCsvBtn" class="btn" type="button" disabled>Copy CSV</button>
       <span id="copyCsvStatus" class="pill muted" aria-live="polite">Nothing copied</span>
+      <button id="copyJsonBtn" class="btn" type="button" disabled>Copy JSON</button>
+      <span id="copyJsonStatus" class="pill muted" aria-live="polite">Nothing copied</span>
     </div>
 
     <div class="filter-panel" id="columnFiltersPanel">
@@ -191,6 +193,7 @@ import {
   isNullish,
   parseCsv,
   rowsToCsv,
+  rowsToJson,
   rowsToMarkdownTable,
   summarizeColumn
 } from './csv-explorer-core.js';
@@ -238,6 +241,8 @@ import {
   const copyMarkdownStatusEl = document.getElementById('copyMarkdownStatus');
   const copyCsvBtn = document.getElementById('copyCsvBtn');
   const copyCsvStatusEl = document.getElementById('copyCsvStatus');
+  const copyJsonBtn = document.getElementById('copyJsonBtn');
+  const copyJsonStatusEl = document.getElementById('copyJsonStatus');
 
   // In-memory dataset
   let headers = [];
@@ -266,6 +271,7 @@ import {
     recomputeBtn.disabled = true;
     copyMarkdownBtn.disabled = true;
     copyCsvBtn.disabled = true;
+    copyJsonBtn.disabled = true;
     headers = [];
     rows = [];
     allStats = new Map();
@@ -329,6 +335,7 @@ import {
       recomputeBtn.disabled = true;
       copyMarkdownBtn.disabled = true;
       copyCsvBtn.disabled = true;
+      copyJsonBtn.disabled = true;
       currentVisibleRows = [];
       resetCopyStatuses();
     }
@@ -376,6 +383,7 @@ import {
   addFilterBtn.addEventListener('click', addColumnFilterFromForm);
   copyMarkdownBtn.addEventListener('click', copyVisibleRowsAsMarkdown);
   copyCsvBtn.addEventListener('click', copyVisibleRowsAsCsv);
+  copyJsonBtn.addEventListener('click', copyVisibleRowsAsJson);
   clearFiltersBtn.addEventListener('click', () => {
     if (activeFilterCount() === 0) return;
     columnFilters = {};
@@ -716,9 +724,16 @@ import {
     copyCsvBtn.disabled = headers.length === 0;
   }
 
+  function resetCopyJsonStatus() {
+    copyJsonStatusEl.textContent = headers.length ? 'Ready to copy' : 'Nothing copied';
+    copyJsonStatusEl.classList.add('muted');
+    copyJsonBtn.disabled = headers.length === 0;
+  }
+
   function resetCopyStatuses() {
     resetCopyMarkdownStatus();
     resetCopyCsvStatus();
+    resetCopyJsonStatus();
   }
 
   async function copyVisibleRowsAsMarkdown() {
@@ -758,6 +773,26 @@ import {
       showError(err?.message || String(err));
     } finally {
       copyCsvBtn.disabled = headers.length === 0;
+    }
+  }
+
+  async function copyVisibleRowsAsJson() {
+    if (!headers.length) return;
+
+    copyJsonBtn.disabled = true;
+    copyJsonStatusEl.textContent = 'Copying…';
+    copyJsonStatusEl.classList.remove('muted');
+
+    try {
+      const json = rowsToJson(headers, currentVisibleRows);
+      await writeClipboardText(json);
+      const rowLabel = currentVisibleRows.length === 1 ? 'row' : 'rows';
+      copyJsonStatusEl.textContent = `Copied ${formatInt(currentVisibleRows.length)} ${rowLabel}`;
+    } catch (err) {
+      copyJsonStatusEl.textContent = 'Copy failed';
+      showError(err?.message || String(err));
+    } finally {
+      copyJsonBtn.disabled = headers.length === 0;
     }
   }
 

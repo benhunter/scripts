@@ -325,3 +325,18 @@ export function rowsToCsv(headers = [], rows = []) {
     ...safeRows.map(renderRow)
   ].join('\n');
 }
+
+export function rowsToJson(headers = [], rows = []) {
+  if (!Array.isArray(headers) || headers.length === 0) return '';
+
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const outputRows = safeRows.map(row => {
+    const outputRow = {};
+    for (const header of headers) {
+      outputRow[header] = row?.[header] ?? '';
+    }
+    return outputRow;
+  });
+
+  return JSON.stringify(outputRows, null, 2);
+}
