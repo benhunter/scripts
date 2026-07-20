@@ -1,5 +1,8 @@
 #! /bin/zsh
 #
+# TODO requires glab and jq
+# TODO check for them
+#
 # Get the projects json:
 #   gitlab-clone-projects-recursive.sh . -d --get-projects-file
 #
@@ -10,6 +13,8 @@
 #   cat GitLab-Projects-2024-05-13T1454.json | jq -sc "map(select(.path_with_namespace | test(\"(security|asve)\"))) | sort_by(.path_with_namespace) | .[].path_with_namespace" | moar
 #   cat GitLab-Projects-2024-05-13T1454.json | jq -sc "map(select(.path_with_namespace | test(\"(security|asve)\"))) | sort_by(.path_with_namespace) | .[]" > filtered-projects.json
 #   gitlab-clone-projects-recursive.sh . -d -f filtered-projects.json
+
+# set -x
 
 usage() {
   echo "Usage: ./gitlab-clone-projects-recursive.sh <BASE_DIR> [-d|--dry-run] [-f|--file GITLAB_PROJECTS_FILE] [--get-projects-file"]
@@ -112,15 +117,18 @@ fi
 echo "Found $(cat $GITLAB_PROJECTS_FILE| wc -l | awk '{print $1}') projects from GitLab."
 
 cat $GITLAB_PROJECTS_FILE | while IFS= read -r LINE; do
-  CLEAN_LINE=$(echo $LINE | tr -d '\r\n')
-  # CLEAN_LINE=$(echo $LINE | sed 's/\n//g' | sed 's/\r//g')
+  CLEAN_LINE=$LINE
+  CLEAN_LINE=$(echo $CLEAN_LINE | tr -d '\r\n')
+  CLEAN_LINE=$(echo $CLEAN_LINE | sed 's/\\_/_/g') # Remove "\_"
+  CLEAN_LINE=$(echo $CLEAN_LINE | sed 's/\\\*/\\\\\\*/g') # Double escape "\*" because it violates the JSON standard.
 
   REPO_PATH=$BASE_DIR/$(echo $CLEAN_LINE | jq -r .path_with_namespace)
   REPO_URL=$(echo $CLEAN_LINE | jq -r .web_url)
 
   if [ -z "$REPO_PATH" ] || [ -z "$REPO_URL" ]; then
     echo "ERROR: jq couldn't parse:"
-    echo "ERROR:   LINE=$LINE"
+    # echo "ERROR:   LINE=$LINE"
+    echo "ERROR:   CLEAN_LINE=$CLEAN_LINE"
     echo "ERROR:   REPO_PATH=$REPO_PATH"
     echo "ERROR:   REPO_URL=$REPO_URL"
     echo "ERROR:   Skipping"
