@@ -1,5 +1,7 @@
 #!/bin/bash
 # storage_diagnose.sh - Collects comprehensive storage diagnostics on Ubuntu
+# TODO - consolidate with ./diagnose-disk-space-ubuntu.sh
+# TODO - inspect docker storage
 
 OUTPUT="/tmp/storage_report_$(hostname)_$(date +%Y%m%d_%H%M%S).log"
 

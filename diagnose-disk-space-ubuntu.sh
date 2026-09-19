@@ -14,6 +14,9 @@ set -Eeuo pipefail
 # Notes:
 # - Running with sudo gives much better visibility into /var, /root, snap, docker, journals, etc.
 # - No files are modified or removed.
+#
+# TODO:
+# - [ ] Warn when run without sudo.
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
