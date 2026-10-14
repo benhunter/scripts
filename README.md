@@ -20,6 +20,7 @@ scripts that delete files or modify system configuration.
 - [`github-latest-release.sh`](github-latest-release.sh) - Gets the latest GitHub release tag for a repository through the GitHub API.
 - [`github-latest-tag.sh`](github-latest-tag.sh) - Finds the highest semantic-version GitHub tag, with optional prefix filtering and token authentication.
 - [`hub-sync-recursive.sh`](hub-sync-recursive.sh) - Recursively fetches repositories, creates local tracking branches, and synchronizes them with the `hub` CLI.
+- [`recover-git-repo.sh`](recover-git-repo.sh) - Recovers zero-byte loose Git objects from a remote after creating a full backup; preserves working files, the index, and branch references.
 - `⚠️` [`tag.sh`](tag.sh) - Bumps a repository's major, minor, or patch version tag and pushes it.
 - [`utils.sh`](utils.sh) - Provides the shared `is_git_repository` shell helper used by recursive Git scripts.
 
